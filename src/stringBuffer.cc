@@ -111,7 +111,7 @@ void Vector::appendValue (const long l)
 
 /*---------------------------------------------------------------------------------------------------- */
 
-void Vector::storeValue (const long v, const long l)
+void Vector::storeValue (const long v, const unsigned long l)
 {
 	long addThis; 
 	if (l >= vaLength)
@@ -129,7 +129,7 @@ void Vector::storeValue (const long v, const long l)
 
 /*---------------------------------------------------------------------------------------------------- */
 
-void Vector::storeVector (const Vector& v, const long l)
+void Vector::storeVector (const Vector& v, const unsigned long l)
 {
 	if (l < vLength && vData[l])
 		delete (Vector*)(vData[l]);

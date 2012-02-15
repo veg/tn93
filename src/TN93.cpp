@@ -2,7 +2,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstdio>
-#include <iomanip.h>
+#include <iomanip>
 #include <math.h>
 
 #include "stringBuffer.h"
@@ -14,7 +14,7 @@
 
 using namespace std;
 
-static char Usage[] = "TN93dist <FASTA file> <output file> <distance thershold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, HYPHY> [BOOTSTRAP 0 or 1]",
+static char Usage[] = "TN93dist <FASTA file> <output file> <distance thershold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, HYPHY> [BOOTSTRAP 0 or 1] [SECOND FILE]",
 ValidChars [] = "ACGTURYSWKMBDHVN?-",
 empty      [] = "";
 
@@ -183,10 +183,9 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
             pairwiseCounts[i][j] = 0.;
             
     
-    for (long p = 0; p < L; p++)
+    for (unsigned long p = 0; p < L; p++)
     {
-        char c1;
-        char c2;
+        unsigned char c1, c2;
         
         if (randomize) {
             long pi = randomize[p];
@@ -409,77 +408,11 @@ void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firs
 
 //---------------------------------------------------------------
 
-int main (int argc, const char * argv[])
+int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength)
 {
-    if (argc != 6 && argc != 7)
-    {
-        cerr << "Usage is `" << Usage << "'." << endl;
-        exit(1);
-    }
-    
-    const    char *S = argv[1];
-    long     firstSequenceLength = 0;
-    double   distanceThreshold = atof (argv[3]);
-    
-    
-    
-    if (distanceThreshold < 0.0 || distanceThreshold > 1.0)
-    {
-        cerr << "Genetic distance threshold must be in [0,1]" << endl;
-        return 1;
-    }
-    
-    FILE *F  = fopen(S, "r"),
-         *FO = fopen (argv[2], "w");
-    
-    if (F == NULL)
-    {
-        cerr << "Cannot open file `" << S << "'." << endl;
-        return 1;
-    }
- 
-    if (FO == NULL)
-    {
-        cerr << "Cannot open file `" << FO << "'." << endl;
-        return 1;
-    }
-    
-    char resolutionOption = RESOLVE;
-    
-    if (strcmp (argv[4], "RESOLVE") == 0){
-        resolutionOption = RESOLVE;
-    } else if (strcmp (argv[4], "AVERAGE") == 0) {
-        resolutionOption = AVERAGE;
-    } else if (strcmp (argv[4], "SKIP") == 0) {
-         resolutionOption = SKIP;
-    }
- 
-
-    StringBuffer names,
-    sequences;
-    
-    Vector       nameLengths,
-    seqLengths;
-    
-    
-    
-    for (int i = 0; i < 256; i++)
-        validFlags [i] = -1;
-    
-    for (int i = 0; i < strlen (ValidChars); i++)
-        validFlags [ValidChars[i]] = i;
-    
-    char automatonState = 0;
-    // 0 - between sequences
-    // 1 - reading sequence name
-    // 2 - reading sequence
-    
-    nameLengths.appendValue (0);
-    seqLengths.appendValue (0);
-    
     while (1)
     {
-   		char currentC = fgetc (F);	
+   		int currentC = fgetc (F);	
         if (feof (F))
             break;
         switch (automatonState)
@@ -533,17 +466,113 @@ int main (int argc, const char * argv[])
     
     if (automatonState == 2){
         addASequenceToList (sequences, seqLengths, firstSequenceLength, names, nameLengths);
+        automatonState = 1;
     } else {
         cerr << "Unexpected end of file" << endl;
         return 1;
     }
+    return 0;
+}
+
+//---------------------------------------------------------------
+
+int main (int argc, const char * argv[])
+{
+    if (argc != 6 && argc != 7 && argc != 8)
+    {
+        cerr << "Usage is `" << Usage << "'." << endl;
+        exit(1);
+    }
     
+    const    char *S = argv[1];
+    long     firstSequenceLength = 0;
+    double   distanceThreshold = atof (argv[3]);
+    
+    
+    
+    if (distanceThreshold < 0.0 || distanceThreshold > 1.0)
+    {
+        cerr << "Genetic distance threshold must be in [0,1]" << endl;
+        return 1;
+    }
+    
+    FILE *F  = fopen(S, "r"),
+         *FO = fopen (argv[2], "w"),
+         *F2 = argc == 8 ? fopen (argv[7], "r"): NULL;
+    
+    if (F == NULL)
+    {
+        cerr << "Cannot open file `" << S << "'." << endl;
+        return 1;
+    }
+ 
+    if (FO == NULL)
+    {
+        cerr << "Cannot open file `" << FO << "'." << endl;
+        return 1;
+    }
+    
+    if (F2 == NULL && argc == 8) {
+        cerr << "Cannot open file `" << argv[7] << "'." << endl;
+        return 1;
+    
+    }
+    
+    char resolutionOption = RESOLVE;
+    
+    if (strcmp (argv[4], "RESOLVE") == 0){
+        resolutionOption = RESOLVE;
+    } else if (strcmp (argv[4], "AVERAGE") == 0) {
+        resolutionOption = AVERAGE;
+    } else if (strcmp (argv[4], "SKIP") == 0) {
+         resolutionOption = SKIP;
+    }
+ 
+
+    StringBuffer names,
+    sequences;
+    
+    Vector       nameLengths,
+    seqLengths;
+    
+    
+    
+    for (int i = 0; i < 256; i++)
+        validFlags [i] = -1;
+    
+    for (unsigned int i = 0; i < strlen (ValidChars); i++)
+        validFlags [(unsigned char)ValidChars[i]] = i;
+    
+    char automatonState = 0;
+    // 0 - between sequences
+    // 1 - reading sequence name
+    // 2 - reading sequence
+    
+    nameLengths.appendValue (0);
+    seqLengths.appendValue (0);
+    
+    if (readFASTA (F, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength))
+        return 1;
+        
     fclose(F);
     
-    unsigned long sequenceCount = seqLengths.length()-1,
-    pairwise      = (sequenceCount-1) * (sequenceCount) / 2;
+    unsigned long seqLengthInFile1 = seqLengths.length()-1,
+                  seqLengthInFile2 = 0;
     
-    cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
+    if (F2) {
+        if (readFASTA (F2, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength))
+            return 1;
+        seqLengthInFile2 = seqLengths.length()-1-seqLengthInFile1;
+        fclose (F2);
+    }
+    
+    unsigned long sequenceCount = seqLengths.length()-1,
+    pairwise      = argc == 8? seqLengthInFile2*seqLengthInFile1 : (sequenceCount-1) * (sequenceCount) / 2;
+    
+    if (argc < 8)
+       cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";    
+    else
+        cerr << "Read " << seqLengthInFile1 << " sequences from file 1 and " << seqLengthInFile2 << " sequences from file 2 of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
     
     double percentDone = 0.,
            max = 0.0;
@@ -576,18 +605,23 @@ int main (int argc, const char * argv[])
         fprintf (FO, "Seq1,Seq2,Distance\n");
     else {
         distanceMatrix = new double [sequenceCount*sequenceCount];
-        for (long i = 0; i < sequenceCount*sequenceCount; i++)
+        for (unsigned long i = 0; i < sequenceCount*sequenceCount; i++)
             distanceMatrix[i] = 100.;
-        for (long i = 0; i < sequenceCount; i++)
+        for (unsigned long i = 0; i < sequenceCount; i++)
             distanceMatrix[i*sequenceCount+i] = 0.;
     }
- #pragma omp parallel for default(none) shared(resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix) 
-    for (long seq1 = 0; seq1 < sequenceCount; seq1 ++)
+    
+    long upperBound = argc == 8 ? seqLengthInFile1 : sequenceCount;
+        
+ #pragma omp parallel for default(none) shared(resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2) 
+    for (long seq1 = 0; seq1 < upperBound; seq1 ++)
     {
         char *n1 = stringText (names, nameLengths, seq1),
              *s1 = stringText(sequences, seqLengths, seq1);
         
-        for (long seq2 = seq1 + 1; seq2 < sequenceCount; seq2 ++)
+        long lowerBound = argc == 8 ? seqLengthInFile1 : seq1 +1;
+        
+        for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
         {
             double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, randFlag);
             
@@ -613,9 +647,9 @@ int main (int argc, const char * argv[])
             
         }
         #pragma omp critical
-        pairIndex += sequenceCount - seq1 - 1;
+        pairIndex += (argc < 8) ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
         
-        if (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == sequenceCount - 1)
+        if (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1)
         {
             #pragma omp critical
             percentDone = pairIndex * 100. / pairwise;
@@ -627,10 +661,10 @@ int main (int argc, const char * argv[])
     if (!doCSV)
     {
         fprintf (FO, "{");
-        for (long seq1 = 0; seq1 < sequenceCount; seq1 ++)
+        for (unsigned long seq1 = 0; seq1 < sequenceCount; seq1 ++)
         {
             fprintf (FO, "\n{%g", distanceMatrix[seq1*sequenceCount]);
-            for (long seq2 = 1; seq2 < sequenceCount; seq2++)
+            for (unsigned long seq2 = 1; seq2 < sequenceCount; seq2++)
             {
                 fprintf (FO, ",%g", distanceMatrix[seq1*sequenceCount+seq2]);
             }
