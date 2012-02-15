@@ -1,6 +1,6 @@
 #include "stringBuffer.h"
 #include <stdlib.h>
-#include <strings.h>
+#include <string.h>
 
 long StringBuffer::sbDefaultLength = 16,
 	 StringBuffer::sbDefaultBoost  = 16,

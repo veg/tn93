@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <iomanip>
 #include <math.h>
+#include <string.h>
 
 #include "stringBuffer.h"
 
