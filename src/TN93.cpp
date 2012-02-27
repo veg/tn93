@@ -15,7 +15,7 @@
 
 using namespace std;
 
-static char Usage[] = "TN93dist <FASTA file> <output file> <distance thershold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, HYPHY> [BOOTSTRAP 0 or 1] [SECOND FILE]",
+static char Usage[] = "TN93dist <FASTA file> <output file OR COUNT> <distance thershold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, HYPHY> [BOOTSTRAP 0 or 1] [SECOND FILE]",
 ValidChars [] = "ACGTURYSWKMBDHVN?-",
 empty      [] = "";
 
@@ -158,7 +158,7 @@ char* stringText (StringBuffer& strings, Vector& lengths, unsigned long index)
 
 /*---------------------------------------------------------------------------------------------------- */
 
-double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long* randomize)
+double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long* randomize, long min_overlap)
 {
 	char useK2P   = 0;
     
@@ -296,6 +296,9 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
             nucFreq [c2]  += pairwiseCounts[c1][c2];
         }
     
+    if (totalNonGap <= min_overlap) {
+    	return -1.;
+    }
     
  	/*char	 nucs[]   = "ACGT",
     spacer[]  = "               ",
@@ -486,8 +489,11 @@ int main (int argc, const char * argv[])
     }
     
     const    char *S = argv[1];
-    long     firstSequenceLength = 0;
+    long     firstSequenceLength = 0,
+    		 min_overlap = 1;
+    		 
     double   distanceThreshold = atof (argv[3]);
+    bool	 count_only 	   = strcmp ("COUNT", argv[2]) == 0;
     
     
     
@@ -497,8 +503,11 @@ int main (int argc, const char * argv[])
         return 1;
     }
     
+    if (distanceThreshold > 0.)
+    	min_overlap = 1./distanceThreshold;
+    
     FILE *F  = fopen(S, "r"),
-         *FO = fopen (argv[2], "w"),
+         *FO = count_only ? NULL : fopen (argv[2], "w"),
          *F2 = argc == 8 ? fopen (argv[7], "r"): NULL;
     
     if (F == NULL)
@@ -507,7 +516,7 @@ int main (int argc, const char * argv[])
         return 1;
     }
  
-    if (FO == NULL)
+    if (FO == NULL && !count_only)
     {
         cerr << "Cannot open file `" << FO << "'." << endl;
         return 1;
@@ -602,8 +611,11 @@ int main (int argc, const char * argv[])
          
     double *distanceMatrix = NULL;
     
-    if (doCSV)
-        fprintf (FO, "Seq1,Seq2,Distance\n");
+    if (doCSV) {
+        if (!count_only) {
+            fprintf (FO, "Seq1,Seq2,Distance\n");
+        }
+    }
     else {
         distanceMatrix = new double [sequenceCount*sequenceCount];
         for (unsigned long i = 0; i < sequenceCount*sequenceCount; i++)
@@ -612,9 +624,10 @@ int main (int argc, const char * argv[])
             distanceMatrix[i*sequenceCount+i] = 0.;
     }
     
-    long upperBound = argc == 8 ? seqLengthInFile1 : sequenceCount;
+    long upperBound = argc == 8 ? seqLengthInFile1 : sequenceCount,
+    	 actual_comparisons = 0;
         
- #pragma omp parallel for default(none) shared(resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2) 
+ #pragma omp parallel for default(none) shared(count_only, actual_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2, min_overlap) 
     for (long seq1 = 0; seq1 < upperBound; seq1 ++)
     {
         char *n1 = stringText (names, nameLengths, seq1),
@@ -624,25 +637,34 @@ int main (int argc, const char * argv[])
         
         for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
         {
-            double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, randFlag);
+            double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, randFlag, min_overlap);
             
-            if (thisD <= distanceThreshold)
+            if (thisD >= -1e-10 && thisD <= distanceThreshold)
             {
                 #pragma omp critical
                 foundLinks ++;
                 //char *s2 = stringText(sequences, seqLengths, seq1);
-                if (doCSV){
-                    #pragma omp critical
-                    fprintf (FO,"%s,%s,%g\n", n1, stringText (names, nameLengths, seq2), thisD);
-                } else {
-                    distanceMatrix[seq1*sequenceCount+seq2] = thisD;
-                    distanceMatrix[seq2*sequenceCount+seq1] = thisD;
-                }
+                if (!count_only){
+					if (doCSV){
+						#pragma omp critical
+						fprintf (FO,"%s,%s,%g\n", n1, stringText (names, nameLengths, seq2), thisD);
+					} else {
+						distanceMatrix[seq1*sequenceCount+seq2] = thisD;
+						distanceMatrix[seq2*sequenceCount+seq1] = thisD;
+					}
+				}
             }
             if (thisD > max)
             {
                 #pragma omp critical
                 max = thisD;
+            }
+            else
+            {
+            	if (thisD > -0.5) {
+                	#pragma omp critical
+            		actual_comparisons ++;
+            	}
             }
             
             
@@ -659,7 +681,7 @@ int main (int argc, const char * argv[])
         }
    }
 
-    if (!doCSV)
+    if (!count_only && !doCSV)
     {
         fprintf (FO, "{");
         for (unsigned long seq1 = 0; seq1 < sequenceCount; seq1 ++)
@@ -677,12 +699,18 @@ int main (int argc, const char * argv[])
     }
     
     cerr << endl;        
+    cerr << "Actual comparisons performed " << actual_comparisons << endl;
     cerr << "Maximum distance = " << max << endl;
+    
+    if (count_only) {
+    	cout << "Found " << foundLinks << " links among " << actual_comparisons << " pairwise comparisons" << endl;
+    }
     
     if (randFlag)
         delete [] randFlag;
     
-    fclose (FO);
+    if (FO)
+    	fclose (FO);
     return 0;
     
 }
