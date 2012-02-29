@@ -15,7 +15,7 @@
 
 using namespace std;
 
-static char Usage[] = "TN93dist <FASTA file> <output file OR COUNT> <distance thershold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, HYPHY> [BOOTSTRAP 0 or 1] [SECOND FILE]",
+static char Usage[] = "TN93dist <FASTA file> <output file OR COUNT> <distance thershold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, HYPHY> <minimum overlap between sequences: integer >= 1> [BOOTSTRAP 0 or 1] [SECOND FILE]",
 ValidChars [] = "ACGTURYSWKMBDHVN?-",
 empty      [] = "";
 
@@ -482,7 +482,7 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
 
 int main (int argc, const char * argv[])
 {
-    if (argc != 6 && argc != 7 && argc != 8)
+    if (argc != 7 && argc != 8 && argc != 9)
     {
         cerr << "Usage is `" << Usage << "'." << endl;
         exit(1);
@@ -503,12 +503,18 @@ int main (int argc, const char * argv[])
         return 1;
     }
     
-    if (distanceThreshold > 0.)
-    	min_overlap = 1./distanceThreshold;
+    /*if (distanceThreshold > 0.)
+    	min_overlap = 1./distanceThreshold;*/
+    
+    min_overlap = atoi (argv[6]);
+    if (min_overlap < 1) {
+        cerr << "Minimum overlap must be a positive integer" << endl;
+        return 1;
+    }
     
     FILE *F  = fopen(S, "r"),
          *FO = count_only ? NULL : fopen (argv[2], "w"),
-         *F2 = argc == 8 ? fopen (argv[7], "r"): NULL;
+         *F2 = argc == 9 ? fopen (argv[8], "r"): NULL;
     
     if (F == NULL)
     {
@@ -522,8 +528,8 @@ int main (int argc, const char * argv[])
         return 1;
     }
     
-    if (F2 == NULL && argc == 8) {
-        cerr << "Cannot open file `" << argv[7] << "'." << endl;
+    if (F2 == NULL && argc == 9) {
+        cerr << "Cannot open file `" << argv[8] << "'." << endl;
         return 1;
     
     }
@@ -577,9 +583,9 @@ int main (int argc, const char * argv[])
     }
     
     unsigned long sequenceCount = seqLengths.length()-1,
-    pairwise      = argc == 8? seqLengthInFile2*seqLengthInFile1 : (sequenceCount-1) * (sequenceCount) / 2;
+    pairwise      = argc == 9? seqLengthInFile2*seqLengthInFile1 : (sequenceCount-1) * (sequenceCount) / 2;
     
-    if (argc < 8)
+    if (argc < 9)
        cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";    
     else
         cerr << "Read " << seqLengthInFile1 << " sequences from file 1 and " << seqLengthInFile2 << " sequences from file 2 of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
@@ -594,8 +600,8 @@ int main (int argc, const char * argv[])
         doCSV = false;
     
     long * randFlag = NULL;
-    if (argc == 7)
-        if (atoi (argv[6]) > 0) {
+    if (argc == 8)
+        if (atoi (argv[7]) > 0) {
             randFlag = new long [firstSequenceLength];
             init_genrand (time(NULL));
             for (long i = 0; i < firstSequenceLength; i++)
@@ -624,7 +630,7 @@ int main (int argc, const char * argv[])
             distanceMatrix[i*sequenceCount+i] = 0.;
     }
     
-    long upperBound = argc == 8 ? seqLengthInFile1 : sequenceCount,
+    long upperBound = argc == 9 ? seqLengthInFile1 : sequenceCount,
     	 actual_comparisons = 0;
         
  #pragma omp parallel for default(none) shared(count_only, actual_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2, min_overlap) 
@@ -633,7 +639,7 @@ int main (int argc, const char * argv[])
         char *n1 = stringText (names, nameLengths, seq1),
              *s1 = stringText(sequences, seqLengths, seq1);
         
-        long lowerBound = argc == 8 ? seqLengthInFile1 : seq1 +1;
+        long lowerBound = argc == 9 ? seqLengthInFile1 : seq1 +1;
         
         for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
         {
@@ -670,7 +676,7 @@ int main (int argc, const char * argv[])
             
         }
         #pragma omp critical
-        pairIndex += (argc < 8) ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
+        pairIndex += (argc < 9) ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
         
         if (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1)
         {
