@@ -631,15 +631,16 @@ int main (int argc, const char * argv[])
     }
     
     long upperBound = argc == 9 ? seqLengthInFile1 : sequenceCount,
-    	 actual_comparisons = 0;
+    	 skipped_comparisons = 0;
         
- #pragma omp parallel for default(none) shared(count_only, actual_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2, min_overlap) 
+ #pragma omp parallel for default(none) shared(count_only, skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2, min_overlap) 
     for (long seq1 = 0; seq1 < upperBound; seq1 ++)
     {
         char *n1 = stringText (names, nameLengths, seq1),
              *s1 = stringText(sequences, seqLengths, seq1);
         
-        long lowerBound = argc == 9 ? seqLengthInFile1 : seq1 +1;
+        long lowerBound = argc == 9 ? seqLengthInFile1 : seq1 +1,  
+             compsSkipped = 0;
         
         for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
         {
@@ -667,16 +668,19 @@ int main (int argc, const char * argv[])
             }
             else
             {
-            	if (thisD > -0.5) {
-                	#pragma omp critical
-            		actual_comparisons ++;
+            	if (thisD <= -0.5) {
+                	
+            		compsSkipped ++;
             	}
             }
             
             
         }
         #pragma omp critical
+        {
+        skipped_comparisons += compsSkipped;
         pairIndex += (argc < 9) ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
+        }
         
         if (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1)
         {
@@ -705,11 +709,11 @@ int main (int argc, const char * argv[])
     }
     
     cerr << endl;        
-    cerr << "Actual comparisons performed " << actual_comparisons << endl;
+    cerr << "Actual comparisons performed " << pairwise-skipped_comparisons << endl;
     cerr << "Maximum distance = " << max << endl;
     
     if (count_only) {
-    	cout << "Found " << foundLinks << " links among " << actual_comparisons << " pairwise comparisons" << endl;
+    	cout << "Found " << foundLinks << " links among " << pairwise-skipped_comparisons << " pairwise comparisons" << endl;
     }
     
     if (randFlag)
