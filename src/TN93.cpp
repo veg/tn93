@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <math.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "stringBuffer.h"
 
@@ -73,6 +74,7 @@ char validFlags [256];
 #define MATRIX_A 0x9908b0dfUL   /* constant vector a */
 #define UPPER_MASK 0x80000000UL /* most significant w-r bits */
 #define LOWER_MASK 0x7fffffffUL /* least significant r bits */
+#define RAND_RANGE 0xffffffffUL /* Maximum value returned by genrand_int32 */
 
 static unsigned long mt[N]; /* the array for the state vector  */
 static int mti=N+1; /* mti==N+1 means mt[N] is not initialized */
@@ -602,10 +604,32 @@ int main (int argc, const char * argv[])
     long * randFlag = NULL;
     if (argc == 8)
         if (atoi (argv[7]) > 0) {
+            cerr << endl << "Randomizing site order..." << endl;
             randFlag = new long [firstSequenceLength];
-            init_genrand (time(NULL));
-            for (long i = 0; i < firstSequenceLength; i++)
-                randFlag[i] = genrand_int32 () % firstSequenceLength;
+            bool   *included = new bool [firstSequenceLength];
+            for (long k = 0; k < firstSequenceLength; k++) {
+                included[k] = false;
+            }
+            init_genrand (time(NULL) + getpid ());
+            
+            unsigned long normalizer = RAND_RANGE / firstSequenceLength,
+                          max_site   = 0;
+            
+            
+            for (long i = 0; i < firstSequenceLength; i++) {
+                randFlag[i] = genrand_int32 () / normalizer;
+                cerr << randFlag[i] << " ";
+                included[randFlag[i]] = true;
+                if (randFlag[i] > max_site) max_site = randFlag[i];
+            }
+            
+            long total_resampled = 0;
+            for (long k = 0; k < firstSequenceLength; k++) {
+                total_resampled += included[k];
+            }
+            
+            delete [] included;
+            cerr << endl << "Unique sites included in the resampled order " << total_resampled << endl;
         }
 
        
