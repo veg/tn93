@@ -16,7 +16,7 @@
 
 using namespace std;
 
-static char Usage[] = "TN93dist <FASTA file> <output file OR COUNT> <distance thershold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, HYPHY> <minimum overlap between sequences: integer >= 1> [BOOTSTRAP 0 or 1] [SECOND FILE]",
+static char Usage[] = "TN93dist <FASTA file> <output file OR COUNT> <distance thershold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, CSVN (numeric IDs instead of sequence names) HYPHY> <minimum overlap between sequences: integer >= 1> [BOOTSTRAP 0 or 1] [SECOND FILE]",
 ValidChars [] = "ACGTURYSWKMBDHVN?-",
 empty      [] = "";
 
@@ -596,10 +596,14 @@ int main (int argc, const char * argv[])
            max = 0.0;
     
     
-    bool    doCSV = true;
+    unsigned char    doCSV = 1;
     
     if (strcmp (argv[5], "HYPHY") == 0)
-        doCSV = false;
+        doCSV = 0; 
+    else
+        if (strcmp (argv[5], "CSVN") == 0) 
+            doCSV = 2;
+       
     
     long * randFlag = NULL;
     if (argc == 8)
@@ -643,7 +647,10 @@ int main (int argc, const char * argv[])
     
     if (doCSV) {
         if (!count_only) {
-            fprintf (FO, "Seq1,Seq2,Distance\n");
+            if (doCSV > 1)
+                 fprintf (FO, "ID1,ID2,Distance\n");           
+            else
+                fprintf (FO, "Seq1,Seq2,Distance\n");
         }
     }
     else {
@@ -676,12 +683,18 @@ int main (int argc, const char * argv[])
                 foundLinks ++;
                 //char *s2 = stringText(sequences, seqLengths, seq1);
                 if (!count_only){
-					if (doCSV){
+					if (doCSV == 1){
 						#pragma omp critical
 						fprintf (FO,"%s,%s,%g\n", n1, stringText (names, nameLengths, seq2), thisD);
 					} else {
-						distanceMatrix[seq1*sequenceCount+seq2] = thisD;
-						distanceMatrix[seq2*sequenceCount+seq1] = thisD;
+                        if (doCSV == 2) {
+                            #pragma omp critical
+                            fprintf (FO,"%ld,%ld,%g\n", seq1, seq2, thisD);
+
+                        } else {
+                            distanceMatrix[seq1*sequenceCount+seq2] = thisD;
+                            distanceMatrix[seq2*sequenceCount+seq1] = thisD;
+                        }
 					}
 				}
             }
