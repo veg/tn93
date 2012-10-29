@@ -16,7 +16,7 @@
 
 using namespace std;
 
-static char Usage[] = "TN93dist <FASTA file> <output file OR COUNT> <distance thershold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, CSVN (numeric IDs instead of sequence names) HYPHY> <minimum overlap between sequences: integer >= 1> [BOOTSTRAP 0 or 1] [SECOND FILE]",
+static char Usage[] = "TN93dist <FASTA file OR - for stdin > <[output file OR - for stdout> OR COUNT> <distance threshold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, CSVN (numeric IDs instead of sequence names) HYPHY> <minimum overlap between sequences: integer >= 1> [BOOTSTRAP 0 or 1] [SECOND FILE]",
 ValidChars [] = "ACGTURYSWKMBDHVN?-",
 empty      [] = "";
 
@@ -514,8 +514,9 @@ int main (int argc, const char * argv[])
         return 1;
     }
     
-    FILE *F  = fopen(S, "r"),
-         *FO = count_only ? NULL : fopen (argv[2], "w"),
+     
+    FILE *F  = strcmp (S,"-") == 0 ? stdin: fopen(S, "r"),
+         *FO = count_only ? NULL : (strcmp (argv[2],"-") == 0? stdout: fopen (argv[2], "w")),
          *F2 = argc == 9 ? fopen (argv[8], "r"): NULL;
     
     if (F == NULL)
