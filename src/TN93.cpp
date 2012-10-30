@@ -16,13 +16,22 @@
 
 using namespace std;
 
-static char Usage[] = "TN93dist <FASTA file OR - for stdin > <[output file OR - for stdout> OR COUNT> <distance threshold> < how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP> <output format; one of CSV, CSVN (numeric IDs instead of sequence names) HYPHY> <minimum overlap between sequences: integer >= 1> [BOOTSTRAP 0 or 1] [SECOND FILE]",
+static char Usage[] = "TN93dist"
+                      "\n\t<FASTA file OR - for stdin >"
+                      "\n\t<[output file OR - for stdout> OR COUNT>"
+                      "\n\t<distance threshold>"
+                      "\n\t< how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP, GAPMM>"
+                      "\n\t<output format; one of CSV, CSVN (numeric IDs instead of sequence names) HYPHY>"
+                      "\n\t<minimum overlap between sequences: integer >= 1>"
+                      "\n\t[BOOTSTRAP 0 or 1]"
+                      "\n\t[SECOND FILE]",
 ValidChars [] = "ACGTURYSWKMBDHVN?-",
 empty      [] = "";
 
 #define RESOLVE 0
 #define AVERAGE 1
 #define SKIP    2
+#define GAPMM   3
 
 static unsigned char   resolutions [] = { RESOLVE_A, 
     RESOLVE_C,
@@ -43,7 +52,8 @@ static unsigned char   resolutions [] = { RESOLVE_A,
     RESOLVE_A | RESOLVE_C | RESOLVE_G | RESOLVE_T , // ? - 16
     0. };
 
-#define GAP 17
+#define N_CHAR 15
+#define GAP    17
 
 static  double   resolutionsCount [] = { 1.f,
     1.f,
@@ -199,8 +209,20 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
             c2 = s2[p];
         }
         
-        if (c1 == GAP || c2 == GAP)
-            continue;
+        if (c1 == GAP || c2 == GAP) {  
+            if (matchMode == GAPMM) {
+                if (c1 == GAP && c2 == GAP)
+                   continue;
+                else {
+                    if (c1 == GAP) {
+                        c1 = N_CHAR;
+                    } else {
+                        c2 = N_CHAR;
+                    }
+                }
+            } else
+                continue;
+        }
                 
         if (c1 < 4)
         {
@@ -539,15 +561,14 @@ int main (int argc, const char * argv[])
     
     char resolutionOption = RESOLVE;
     
-    if (strcmp (argv[4], "RESOLVE") == 0){
-        resolutionOption = RESOLVE;
+    if (strcmp (argv[4], "GAPMM") == 0){
+        resolutionOption = GAPMM;
     } else if (strcmp (argv[4], "AVERAGE") == 0) {
         resolutionOption = AVERAGE;
     } else if (strcmp (argv[4], "SKIP") == 0) {
          resolutionOption = SKIP;
     }
  
-
     StringBuffer names,
     sequences;
     
