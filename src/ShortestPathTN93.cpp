@@ -22,6 +22,7 @@ static char Usage[] = "ShortestPathTN93"
                       "\n\t<output file OR - for stdout>"
                       "\n\t< how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP, GAPMM>"
                       "\n\t<minimum overlap between sequences: integer >= 1>"
+                      "\n\t<0-based index of the source sequence"
                       "\n\t<output format: FASTA or JSON>"
                       "\n\t<report estimate paths for these sequences -- 0-based indices>",
 
@@ -434,13 +435,13 @@ double    computeTransformedTN93 (unsigned long seq1, unsigned long seq2) {
 
 //---------------------------------------------------------------
 
-void initializeSingleSource (unsigned long seq_count) {
+void initializeSingleSource (unsigned long seq_count, unsigned long source) {
     for (unsigned long idx = 0; idx < seq_count; idx++) {
         distanceEstimates.appendValue (DBL_MAX);
         workingNodes.appendValue (idx);
         nodeParents.appendValue  (-1);
     }
-    distanceEstimates.storeValue (0., 0);
+    distanceEstimates.storeValue (0., source);
 }
 
 //---------------------------------------------------------------
@@ -510,7 +511,7 @@ void relaxDistanceEstimates (unsigned long theSequence) {
 
 int main (int argc, const char * argv[])
 {
-    if (argc < 7)
+    if (argc < 8)
     {
         cerr << "Usage is `" << Usage << "'." << endl;
         exit(1);
@@ -575,9 +576,15 @@ int main (int argc, const char * argv[])
         
     unsigned long sequenceCount = seqLengths.length()-1;
     
-    cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl ; 
+    cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl ;
     
-    initializeSingleSource (sequenceCount);
+    unsigned long source = atoi (argv[5]);
+    if (source < 0 || source >= sequenceCount) {
+        cerr << "Invalid source sequence index";
+        return 1;
+    }
+    
+    initializeSingleSource (sequenceCount, source);
     
     double percentDone = 0.0,
            normalizer  = 100./sequenceCount;
@@ -592,13 +599,13 @@ int main (int argc, const char * argv[])
     }  
     cerr << endl;
     
-    bool is_json = strcmp (argv[5],"JSON") == 0;
+    bool is_json = strcmp (argv[6],"JSON") == 0;
     
     if (is_json) {
         fprintf (FO, "\n{\n");
     }
     
-    for (long which_arg = 6; which_arg < argc; which_arg ++) {
+    for (long which_arg = 7; which_arg < argc; which_arg ++) {
         reportPathToSource (atoi (argv[which_arg]),FO, is_json);
         if (is_json && which_arg < argc - 1) {
             fprintf (FO, ",\n");
