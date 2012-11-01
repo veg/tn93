@@ -22,7 +22,9 @@ static char Usage[] = "ShortestPathTN93"
                       "\n\t<output file OR - for stdout>"
                       "\n\t< how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP, GAPMM>"
                       "\n\t<minimum overlap between sequences: integer >= 1>"
+                      "\n\t<output format: FASTA or JSON>"
                       "\n\t<report estimate paths for these sequences -- 0-based indices>",
+
 
 ValidChars [] = "ACGTURYSWKMBDHVN?-",
 empty      [] = "";
@@ -443,27 +445,40 @@ void initializeSingleSource (unsigned long seq_count) {
 
 //---------------------------------------------------------------
 
-void dump_sequence_fasta (unsigned long index) {
-    cout << ">" << stringText (names, nameLengths, index) << endl;
+void dump_sequence_fasta (unsigned long index, FILE* output) {
+    fprintf (output, ">%s\n", stringText (names, nameLengths, index));
     char *s1 = stringText (sequences, seqLengths, index);
     for (long c = 0; c < firstSequenceLength; c++) {
-        cout << ValidChars[s1[c]];
+        fputc( ValidChars[s1[c]], output);
     }
-    cout << endl;
+    fprintf (output, "\n");
 }
 
 //---------------------------------------------------------------
 
-void reportPathToSource (const unsigned long which_index) {
+void reportPathToSource (const unsigned long which_index, FILE* output, bool is_json) {
     if (which_index < nodeParents.length()) {
-        dump_sequence_fasta (which_index);
+        if (is_json) {
+            char * sname = stringText (names, nameLengths, which_index);
+            fprintf (output, "'%s': ['%s'",  sname, sname);
+        } else {
+            dump_sequence_fasta (which_index, output);
+        }
         long current_index = nodeParents.value(which_index);
         
         while (current_index >= 0) {
-            dump_sequence_fasta (current_index);
+            if (is_json) {
+                fprintf (output, ",'%s'",  stringText (names, nameLengths, current_index));
+            } else {
+                dump_sequence_fasta (current_index, output);
+            }
             current_index = nodeParents.value(current_index);
         }
-        cout << endl;
+        if (is_json) {
+            fprintf (output, "]");            
+        } else {
+            fprintf (output, "\n");
+        }
         
     } else {
         cerr << "Sequence index " << which_index << " is out of range." << endl;
@@ -495,7 +510,7 @@ void relaxDistanceEstimates (unsigned long theSequence) {
 
 int main (int argc, const char * argv[])
 {
-    if (argc < 6)
+    if (argc < 7)
     {
         cerr << "Usage is `" << Usage << "'." << endl;
         exit(1);
@@ -577,11 +592,24 @@ int main (int argc, const char * argv[])
     }  
     cerr << endl;
     
-    for (long which_arg = 5; which_arg < argc; which_arg ++) {
-        reportPathToSource (atoi (argv[which_arg]));
+    bool is_json = strcmp (argv[5],"JSON") == 0;
+    
+    if (is_json) {
+        fprintf (FO, "\n{\n");
     }
     
-    if (FO)
+    for (long which_arg = 6; which_arg < argc; which_arg ++) {
+        reportPathToSource (atoi (argv[which_arg]),FO, is_json);
+        if (is_json && which_arg < argc - 1) {
+            fprintf (FO, ",\n");
+        }
+    }
+
+    if (is_json) {
+        fprintf (FO, "\n}\n");
+    }
+
+    if (FO != stdout)
     	fclose (FO);
     return 0;
     
