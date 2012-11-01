@@ -1,7 +1,7 @@
 #include "stringBuffer.h"
 #include <stdlib.h>
 #include <string.h>
-#include <climits>
+#include <cfloat>
 #include <iostream>
 
 using namespace std;
@@ -9,7 +9,9 @@ using namespace std;
 long StringBuffer::sbDefaultLength = 16,
 	 StringBuffer::sbDefaultBoost  = 16,
 	 Vector::vDefaultLength		   = 16,
-	 Vector::vDefaultBoost		   = 16;
+	 Vector::vDefaultBoost		   = 16,
+     VectorDouble::vDefaultLength		   = 16,
+     VectorDouble::vDefaultBoost		   = 16;
 
 /*---------------------------------------------------------------------------------------------------- */
 
@@ -156,14 +158,15 @@ void Vector::remove (const unsigned long l)
 
 /*---------------------------------------------------------------------------------------------------- */
 
-long Vector::extractMin (const Vector& values) {
-	long current_min = LONG_MAX,
-         best_index  = -1;
+long Vector::extractMin (VectorDouble& values) {
+	double current_min = DBL_MAX;
+    long   best_index  = -1;
         
     for (unsigned long i = 0; i < vLength; i++) {
-        if (values.vData[vData[i]] < current_min) {
+        double try_value = values.value(vData[i]);
+        if (try_value < current_min) {
             best_index  = i;
-            current_min = values.vData[vData[i]];
+            current_min = try_value;
         }
     }
 
@@ -202,4 +205,57 @@ void Vector::resetVector (void)
 {
 	vLength        = 0;
 }
+
+/*---------------------------------------------------------------------------------------------------- */
+
+VectorDouble::VectorDouble (void)
+{
+	vLength  = 0;
+	vaLength = Vector::vDefaultLength;
+	vData = (double*)malloc (sizeof(double)*vaLength);
+}
+
+/*---------------------------------------------------------------------------------------------------- */
+
+VectorDouble::~VectorDouble (void)
+{
+	free (vData);
+}
+
+/*---------------------------------------------------------------------------------------------------- */
+
+void VectorDouble::appendValue (const double l)
+{
+	long addThis;
+	if (vLength == vaLength)
+	{
+		addThis = vaLength / 8;
+		if (VectorDouble::vDefaultBoost > addThis)
+			addThis = VectorDouble::vDefaultBoost;
+		vaLength += addThis;
+		vData = (double*)realloc (vData,sizeof(double)*vaLength);
+	}
+	vData[vLength++] = l;
+}
+
+/*---------------------------------------------------------------------------------------------------- */
+
+void VectorDouble::storeValue (const double v, const unsigned long l)
+{
+	long addThis;
+	if (l >= vaLength)
+	{
+		addThis = l-vaLength+1;
+		if (VectorDouble::vDefaultBoost > addThis)
+			addThis = VectorDouble::vDefaultBoost;
+		vaLength += addThis;
+		vData = (double*)realloc (vData,sizeof(double)*vaLength);
+		vLength = l+1;
+	}
+	vData[l] = v;
+}
+
+
+
+
 

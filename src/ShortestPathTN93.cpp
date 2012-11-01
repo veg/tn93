@@ -6,7 +6,7 @@
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
-#include <climits>
+#include <cfloat>
 
 #include "stringBuffer.h"
 
@@ -83,9 +83,10 @@ StringBuffer names,
 
 Vector       nameLengths,
              seqLengths,
-             distanceEstimates,
              workingNodes,
              nodeParents;
+
+VectorDouble distanceEstimates;
 
 long         firstSequenceLength = 0,
              min_overlap = 1;
@@ -412,26 +413,19 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
 
 //---------------------------------------------------------------
 
-long    computeTransformedTN93 (unsigned long seq1, unsigned long seq2) {
+double    computeTransformedTN93 (unsigned long seq1, unsigned long seq2) {
 
     char *n1 = stringText (names, nameLengths, seq1),
          *s1 = stringText (sequences, seqLengths, seq1);
     
-    double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, false, min_overlap);
-
-    /*if (thisD <= 0.01) {
-        return (long)(thisD * 1000.);
-    } else {
-        if (thisD <= 0.02) {
-            return (long)(thisD * 2500.);
-        }  if (thisD <= 0.05) {
-            return (long)(thisD * 5000.);
-        } else {
-            return (long)(thisD * 20000.);
-        }
-    }*/
+    double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, NULL, min_overlap),
+    d = exp(thisD*20.)-1.;
     
-    return (long)exp(thisD*20.);
+    
+    //#pragma omp critical
+    //cout << thisD << " -> " << d << endl;
+    return d;
+    //return (long)(exp(10.*thisD)-1.0)*10000;
 }
 
 
@@ -440,11 +434,11 @@ long    computeTransformedTN93 (unsigned long seq1, unsigned long seq2) {
 
 void initializeSingleSource (unsigned long seq_count) {
     for (unsigned long idx = 0; idx < seq_count; idx++) {
-        distanceEstimates.appendValue (LONG_MAX);
+        distanceEstimates.appendValue (DBL_MAX);
         workingNodes.appendValue (idx);
         nodeParents.appendValue  (-1);
     }
-    distanceEstimates.storeValue (0, 0);
+    distanceEstimates.storeValue (0., 0);
 }
 
 //---------------------------------------------------------------
@@ -479,15 +473,15 @@ void reportPathToSource (const unsigned long which_index) {
 //---------------------------------------------------------------
 
 void relaxDistanceEstimates (unsigned long theSequence) {
-    const unsigned long left_to_do           = workingNodes.length(),
-                        my_distance_estimate = distanceEstimates.value (theSequence);
+    const unsigned long left_to_do           = workingNodes.length();
+    double               my_distance_estimate = distanceEstimates.value (theSequence);
                         
- #pragma omp parallel for default(none) shared(nodeParents,workingNodes,theSequence,distanceEstimates ) 
+ #pragma omp parallel for default(none) shared(my_distance_estimate,nodeParents,workingNodes,theSequence,distanceEstimates ) 
  
-         for (long remaining = 0; remaining < left_to_do; remaining ++) {
+    for (long remaining = 0; remaining < left_to_do; remaining ++) {
         const unsigned long working_index = workingNodes.value(remaining);
-        long new_estimate = computeTransformedTN93 (theSequence, working_index);
-        if (new_estimate < LONG_MAX) {
+        double new_estimate = computeTransformedTN93 (theSequence, working_index);
+        if (new_estimate < DBL_MAX) {
             if (new_estimate + my_distance_estimate < distanceEstimates.value (working_index)) {
                 distanceEstimates.storeValue (new_estimate + my_distance_estimate, working_index);
                 nodeParents.storeValue (theSequence, working_index);
