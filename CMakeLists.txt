@@ -20,6 +20,12 @@ add_executable(
     src/stringBuffer.cc
 )
 
+add_executable(
+    ShortestPathTN93
+    src/ShortestPathTN93.cpp
+    src/stringBuffer.cc
+)
+
 set(DEFAULT_COMPILE_FLAGS "-O3")
 set(DEFAULT_LINK_FLAGS "${DEFAULT_COMPILE_FLAGS}")
 
@@ -31,8 +37,13 @@ if (${OPENMP_FOUND})
 		PROPERTIES
 		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
 		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
-)
-
+	)
+	set_target_properties(
+		ShortestPathTN93
+		PROPERTIES
+		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
+		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
+    )
 endif (${OPENMP_FOUND})
 
 install(
@@ -45,4 +56,14 @@ add_custom_target(TN93
 	DEPENDS TN93dist
 )
 
+
+install(
+    TARGETS ShortestPathTN93
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
+add_custom_target(TN93SP
+	DEPENDS ShortestPathTN93
+)
 

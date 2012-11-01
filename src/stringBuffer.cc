@@ -1,6 +1,10 @@
 #include "stringBuffer.h"
 #include <stdlib.h>
 #include <string.h>
+#include <climits>
+#include <iostream>
+
+using namespace std;
 
 long StringBuffer::sbDefaultLength = 16,
 	 StringBuffer::sbDefaultBoost  = 16,
@@ -135,6 +139,41 @@ void Vector::storeVector (const Vector& v, const unsigned long l)
 		delete (Vector*)(vData[l]);
 		
 	storeValue ((long)&v, l);
+}
+
+/*---------------------------------------------------------------------------------------------------- */
+
+void Vector::remove (const unsigned long l)
+{
+	if (l < vLength) {
+        for (unsigned long k = l+1; k < vLength; k++) {
+            vData[k-1] = vData[k];
+        }
+        vLength--;
+    }
+}
+
+
+/*---------------------------------------------------------------------------------------------------- */
+
+long Vector::extractMin (const Vector& values) {
+	long current_min = LONG_MAX,
+         best_index  = -1;
+        
+    for (unsigned long i = 0; i < vLength; i++) {
+        if (values.vData[vData[i]] < current_min) {
+            best_index  = i;
+            current_min = values.vData[vData[i]];
+        }
+    }
+
+    if (best_index >= 0) {
+        current_min = vData[best_index];
+        remove (best_index);
+        return current_min;
+    }
+    
+    return best_index;
 }
 
 /*---------------------------------------------------------------------------------------------------- */

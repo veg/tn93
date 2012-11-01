@@ -32,6 +32,7 @@ class	StringBuffer {
 class	Vector {
 
  long*	vData;
+ 
  unsigned long
 		vLength,
 		vaLength;
@@ -42,7 +43,9 @@ class	Vector {
 		~Vector			(void);
 		
 		void					appendValue		(const long);
+        long                    extractMin      (const Vector&);
 		void					resetVector		(void);
+		void					remove          (const unsigned long);
 		void					storeValue		(const long, const unsigned long);
 		void					storeVector		(const Vector&, const unsigned long);
 		void					sort			(void);
