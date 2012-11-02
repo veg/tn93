@@ -24,6 +24,7 @@ static char Usage[] = "ShortestPathTN93"
                       "\n\t<minimum overlap between sequences: integer >= 1>"
                       "\n\t<0-based index of the source sequence"
                       "\n\t<output format: FASTA or JSON>"
+                      "\n\t<large step penalty: positive real number>"
                       "\n\t<report estimate paths for these sequences -- 0-based indices>",
 
 
@@ -95,6 +96,7 @@ long         firstSequenceLength = 0,
              min_overlap = 1;
 
 char         resolutionOption = RESOLVE;
+double       step_penalty = 1.;
 
 
 //---------------------------------------------------------------
@@ -416,19 +418,19 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
 
 //---------------------------------------------------------------
 
-double    computeTransformedTN93 (unsigned long seq1, unsigned long seq2) {
+double    computeTransformedTN93 (unsigned long seq1, unsigned long seq2, double *ds = NULL) {
 
     char *n1 = stringText (names, nameLengths, seq1),
          *s1 = stringText (sequences, seqLengths, seq1);
     
     double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, NULL, min_overlap),
-    d = exp(thisD*20.)-1.;
+               d = thisD < 0.?1.e100:exp(thisD*step_penalty)-1.;
     
     
-    //#pragma omp critical
-    //cout << thisD << " -> " << d << endl;
+    if (ds) 
+        *ds = thisD;
+    
     return d;
-    //return (long)(exp(10.*thisD)-1.0)*10000;
 }
 
 
@@ -446,8 +448,13 @@ void initializeSingleSource (unsigned long seq_count, unsigned long source) {
 
 //---------------------------------------------------------------
 
-void dump_sequence_fasta (unsigned long index, FILE* output) {
-    fprintf (output, ">%s\n", stringText (names, nameLengths, index));
+void dump_sequence_fasta (unsigned long index, FILE* output, double * d = NULL) {
+    if (d) {
+        fprintf (output, ">%s [%g, %g]\n", stringText (names, nameLengths, index), d[0], d[1]);
+    } else {
+        fprintf (output, ">%s\n", stringText (names, nameLengths, index));
+    }
+    
     char *s1 = stringText (sequences, seqLengths, index);
     for (long c = 0; c < firstSequenceLength; c++) {
         fputc( ValidChars[s1[c]], output);
@@ -465,14 +472,18 @@ void reportPathToSource (const unsigned long which_index, FILE* output, bool is_
         } else {
             dump_sequence_fasta (which_index, output);
         }
-        long current_index = nodeParents.value(which_index);
+        long    last_index    = which_index,
+                current_index = nodeParents.value(which_index);
         
         while (current_index >= 0) {
             if (is_json) {
                 fprintf (output, ",\"%s\"",  stringText (names, nameLengths, current_index));
             } else {
-                dump_sequence_fasta (current_index, output);
+                double d [2];
+                d[1] = computeTransformedTN93 (current_index, last_index, d);
+                dump_sequence_fasta (current_index, output, d);
             }
+            last_index = current_index;
             current_index = nodeParents.value(current_index);
         }
         if (is_json) {
@@ -511,7 +522,7 @@ void relaxDistanceEstimates (unsigned long theSequence) {
 
 int main (int argc, const char * argv[])
 {
-    if (argc < 8)
+    if (argc < 9)
     {
         cerr << "Usage is `" << Usage << "'." << endl;
         exit(1);
@@ -582,12 +593,22 @@ int main (int argc, const char * argv[])
     if (source < 0 || source >= sequenceCount) {
         cerr << "Invalid source sequence index";
         return 1;
+    } else {
+         cerr << "Using " << stringText (names, nameLengths, source) << " as the source" << endl;   
     }
     
     initializeSingleSource (sequenceCount, source);
     
     double percentDone = 0.0,
            normalizer  = 100./sequenceCount;
+           
+    step_penalty = atof (argv[7]);
+    if (step_penalty <= 0.0) {
+        cerr << "Invalid step penalty";
+        return 1;
+    } else {
+        cerr << "Using step penalty of " << step_penalty << endl;
+    }
     
     while (workingNodes.length()) {
         unsigned long add_this_node = workingNodes.extractMin (distanceEstimates);
@@ -605,7 +626,7 @@ int main (int argc, const char * argv[])
         fprintf (FO, "\n{\n");
     }
     
-    for (long which_arg = 7; which_arg < argc; which_arg ++) {
+    for (long which_arg = 8; which_arg < argc; which_arg ++) {
         reportPathToSource (atoi (argv[which_arg]),FO, is_json);
         if (is_json && which_arg < argc - 1) {
             fprintf (FO, ",\n");
