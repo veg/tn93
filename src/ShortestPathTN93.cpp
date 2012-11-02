@@ -461,7 +461,7 @@ void reportPathToSource (const unsigned long which_index, FILE* output, bool is_
     if (which_index < nodeParents.length()) {
         if (is_json) {
             char * sname = stringText (names, nameLengths, which_index);
-            fprintf (output, "'%s': ['%s'",  sname, sname);
+            fprintf (output, "\"%s\": [\"%s\"",  sname, sname);
         } else {
             dump_sequence_fasta (which_index, output);
         }
@@ -469,7 +469,7 @@ void reportPathToSource (const unsigned long which_index, FILE* output, bool is_
         
         while (current_index >= 0) {
             if (is_json) {
-                fprintf (output, ",'%s'",  stringText (names, nameLengths, current_index));
+                fprintf (output, ",\"%s\"",  stringText (names, nameLengths, current_index));
             } else {
                 dump_sequence_fasta (current_index, output);
             }
