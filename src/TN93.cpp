@@ -20,7 +20,7 @@ static char Usage[] = "TN93dist"
                       "\n\t<FASTA file OR - for stdin >"
                       "\n\t<[output file OR - for stdout> OR COUNT>"
                       "\n\t<distance threshold>"
-                      "\n\t< how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP, GAPMM>"
+                      "\n\t<how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP, GAPMM>"
                       "\n\t<output format; one of CSV, CSVN (numeric IDs instead of sequence names) HYPHY>"
                       "\n\t<minimum overlap between sequences: integer >= 1>"
                       "\n\t[BOOTSTRAP 0 or 1]"
@@ -629,8 +629,10 @@ int main (int argc, const char * argv[])
        
     
     long * randFlag = NULL;
-    if (argc == 8)
-        if (atoi (argv[7]) > 0) {
+    long * randSeqs = NULL;
+    
+    if (atoi (argv[7]) > 0) {
+        if (argc == 8) {
             cerr << endl << "Randomizing site order..." << endl;
             randFlag = new long [firstSequenceLength];
             bool   *included = new bool [firstSequenceLength];
@@ -657,7 +659,31 @@ int main (int argc, const char * argv[])
             
             delete [] included;
             cerr << endl << "Unique sites included in the resampled order " << total_resampled << endl;
+        } else {
+            randSeqs = new long [sequenceCount];
+            
+            for (long k = 0; k < sequenceCount; k++) {
+                randSeqs [k] = k;
+             }   
+            
+            init_genrand (time(NULL) + getpid ());
+            
+            unsigned long normalizer = RAND_RANGE / firstSequenceLength,
+                          max_site   = 0;
+            
+            
+            for (long i = 0; i < sequenceCount; i++) {
+                long id = genrand_int32 () / (RAND_RANGE / (sequenceCount-i)),
+                     t = randSeqs[i+id];
+                randSeqs[i+id]= randSeqs[i];
+                randSeqs[i] = t;
+            }
+            
+            
+           
+            cerr << endl << "Randomized sequence assignment to datasets " << endl;
         }
+    }
 
        
     
@@ -687,11 +713,13 @@ int main (int argc, const char * argv[])
     long upperBound = argc == 9 ? seqLengthInFile1 : sequenceCount,
     	 skipped_comparisons = 0;
         
- #pragma omp parallel for default(none) shared(count_only, skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2, min_overlap, mean) 
+ #pragma omp parallel for default(none) shared(count_only, skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2, min_overlap, mean, randSeqs) 
     for (long seq1 = 0; seq1 < upperBound; seq1 ++)
     {
-        char *n1 = stringText (names, nameLengths, seq1),
-             *s1 = stringText(sequences, seqLengths, seq1);
+        long mapped_id = randSeqs?randSeqs[seq1]:seq1;
+    
+        char *n1 = stringText (names, nameLengths, mapped_id),
+             *s1 = stringText(sequences, seqLengths, mapped_id);
         
         long lowerBound = argc == 9 ? seqLengthInFile1 : seq1 +1,  
              compsSkipped = 0;
@@ -701,7 +729,8 @@ int main (int argc, const char * argv[])
         
         for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
         {
-            double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, randFlag, min_overlap);
+            long mapped_id2 = randSeqs?randSeqs[seq2]:seq2;
+            double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, min_overlap);
             
             if (thisD >= -1e-10 && thisD <= distanceThreshold)
             {
@@ -711,15 +740,15 @@ int main (int argc, const char * argv[])
                 if (!count_only){
 					if (doCSV == 1){
 						#pragma omp critical
-						fprintf (FO,"%s,%s,%g\n", n1, stringText (names, nameLengths, seq2), thisD);
+						fprintf (FO,"%s,%s,%g\n", n1, stringText (names, nameLengths, mapped_id2), thisD);
 					} else {
                         if (doCSV == 2) {
                             #pragma omp critical
-                            fprintf (FO,"%ld,%ld,%g\n", seq1, seq2, thisD);
+                            fprintf (FO,"%ld,%ld,%g\n", mapped_id, mapped_id2, thisD);
 
                         } else {
-                            distanceMatrix[seq1*sequenceCount+seq2] = thisD;
-                            distanceMatrix[seq2*sequenceCount+seq1] = thisD;
+                            distanceMatrix[mapped_id*sequenceCount+mapped_id2] = thisD;
+                            distanceMatrix[mapped_id2*sequenceCount+mapped_id] = thisD;
                         }
 					}
 				}
@@ -783,6 +812,9 @@ int main (int argc, const char * argv[])
     
     if (randFlag)
         delete [] randFlag;
+        
+    if (randSeqs)
+        delete [] randSeqs;
     
     if (FO)
     	fclose (FO);
