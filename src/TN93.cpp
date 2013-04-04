@@ -677,9 +677,7 @@ int main (int argc, const char * argv[])
                      t = randSeqs[i+id];
                 randSeqs[i+id]= randSeqs[i];
                 randSeqs[i] = t;
-            }
-            
-            
+            }            
            
             cerr << endl << "Randomized sequence assignment to datasets " << endl;
         }
