@@ -18,12 +18,14 @@ add_executable(
     TN93dist
     src/TN93.cpp
     src/stringBuffer.cc
+    src/tn93_shared.cc
 )
 
 add_executable(
     ShortestPathTN93
     src/ShortestPathTN93.cpp
     src/stringBuffer.cc
+    src/tn93_shared.cc
 )
 
 set(DEFAULT_COMPILE_FLAGS "-O3")

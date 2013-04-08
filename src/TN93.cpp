@@ -631,7 +631,7 @@ int main (int argc, const char * argv[])
     long * randFlag = NULL;
     long * randSeqs = NULL;
     
-    if (atoi (argv[7]) > 0) {
+    if (argc >= 8 && atoi (argv[7]) > 0) {
         if (argc == 8) {
             cerr << endl << "Randomizing site order..." << endl;
             randFlag = new long [firstSequenceLength];
@@ -660,26 +660,30 @@ int main (int argc, const char * argv[])
             delete [] included;
             cerr << endl << "Unique sites included in the resampled order " << total_resampled << endl;
         } else {
-            randSeqs = new long [sequenceCount];
-            
-            for (long k = 0; k < sequenceCount; k++) {
-                randSeqs [k] = k;
-             }   
-            
-            init_genrand (time(NULL) + getpid ());
-            
-            unsigned long normalizer = RAND_RANGE / firstSequenceLength,
-                          max_site   = 0;
-            
-            
-            for (long i = 0; i < sequenceCount; i++) {
-                long id = genrand_int32 () / (RAND_RANGE / (sequenceCount-i)),
-                     t = randSeqs[i+id];
-                randSeqs[i+id]= randSeqs[i];
-                randSeqs[i] = t;
-            }            
-           
-            cerr << endl << "Randomized sequence assignment to datasets " << endl;
+            if (argc == 9) {
+                randSeqs = new long [sequenceCount];
+                
+                for (long k = 0; k < sequenceCount; k++) {
+                    randSeqs [k] = k;
+                 }   
+                
+                init_genrand (time(NULL) + getpid ());
+                
+                unsigned long normalizer = RAND_RANGE / firstSequenceLength,
+                              max_site   = 0;
+                
+                
+                for (long i = 0; i < sequenceCount; i++) {
+                    long id = genrand_int32 () / (RAND_RANGE / (sequenceCount-i)),
+                         t = randSeqs[i+id];
+                    randSeqs[i+id]= randSeqs[i];
+                    randSeqs[i] = t;
+                }
+                
+                
+               
+                cerr << endl << "Randomized sequence assignment to datasets " << endl;
+            }
         }
     }
 

@@ -10,11 +10,6 @@
 
 #include "stringBuffer.h"
 
-#define  RESOLVE_A 0x01
-#define  RESOLVE_C 0x02
-#define  RESOLVE_G 0x04
-#define  RESOLVE_T 0x08
-
 using namespace std;
 
 static char Usage[] = "ShortestPathTN93"
@@ -30,11 +25,6 @@ static char Usage[] = "ShortestPathTN93"
 
 ValidChars [] = "ACGTURYSWKMBDHVN?-",
 empty      [] = "";
-
-#define RESOLVE 0
-#define AVERAGE 1
-#define SKIP    2
-#define GAPMM   3
 
 static unsigned char   resolutions [] = { RESOLVE_A, 
     RESOLVE_C,
