@@ -19,7 +19,7 @@ public:
         return sData;
     }
     void					appendChar		(const char);
-    void					appendBuffer	(const char*);
+    void					appendBuffer	(const char*, const long = -1);
     void					resetString		(void);
     unsigned long			length			(void) {
         return sLength;

@@ -34,24 +34,24 @@ char ValidChars [] = "ACGTURYSWKMBDHVN?-",
 #define SKIP    2
 #define GAPMM   3
 
-static unsigned char   resolutions [] = { RESOLVE_A,
-                                        RESOLVE_C,
-                                        RESOLVE_G,
-                                        RESOLVE_T,
-                                        RESOLVE_T, // U - 4
-                                        RESOLVE_A | RESOLVE_G, // R - 5
-                                        RESOLVE_C | RESOLVE_T, // Y - 6
-                                        RESOLVE_C | RESOLVE_G, // S - 7
-                                        RESOLVE_A | RESOLVE_T, // W - 8
-                                        RESOLVE_G | RESOLVE_T, // K - 9
-                                        RESOLVE_A | RESOLVE_C, // M - 10
-                                        RESOLVE_C | RESOLVE_G | RESOLVE_T, // B - 11
-                                        RESOLVE_A | RESOLVE_G | RESOLVE_T, // D - 12
-                                        RESOLVE_A | RESOLVE_C | RESOLVE_T, // H - 13
-                                        RESOLVE_A | RESOLVE_C | RESOLVE_G, // V - 14
-                                        RESOLVE_A | RESOLVE_C | RESOLVE_G | RESOLVE_T , // N - 15
-                                        RESOLVE_A | RESOLVE_C | RESOLVE_G | RESOLVE_T , // ? - 16
-                                        0.
+static long   resolutions [][4] = { {1,0,0,0},
+                                             {0,1,0,0},
+                                             {0,0,1,0},
+                                             {0,0,0,1},
+                                             {0,0,0,1}, // U - 4
+                                             {1,0,1,0}, //RESOLVE_A | RESOLVE_G, // R - 5
+                                             {0,1,0,1}, //RESOLVE_C | RESOLVE_T, // Y - 6
+                                             {0,1,1,0}, //RESOLVE_C | RESOLVE_G, // S - 7
+                                             {1,0,0,1}, //RESOLVE_A | RESOLVE_T, // W - 8
+                                             {0,0,1,1}, //RESOLVE_G | RESOLVE_T, // K - 9
+                                             {1,1,0,0}, //RESOLVE_A | RESOLVE_C, // M - 10
+                                             {0,1,1,1}, // RESOLVE_C | RESOLVE_G | RESOLVE_T, // B - 11
+                                             {1,0,1,1}, //RESOLVE_A | RESOLVE_G | RESOLVE_T, // D - 12
+                                             {1,1,0,1}, //RESOLVE_A | RESOLVE_C | RESOLVE_T, // H - 13
+                                             {1,1,1,0}, // RESOLVE_A | RESOLVE_C | RESOLVE_G, // V - 14
+                                             {1,1,1,1}, // RESOLVE_A | RESOLVE_C | RESOLVE_G | RESOLVE_T , // N - 15
+                                             {1,1,1,1}, //RESOLVE_A | RESOLVE_C | RESOLVE_G | RESOLVE_T , // ? - 16
+                                             {0,0,0,0} // GAP
                                         };
 
 #define N_CHAR 15
@@ -170,6 +170,36 @@ char* stringText (StringBuffer& strings, Vector& lengths, unsigned long index)
     return empty;
 }
 
+//---------------------------------------------------------------
+
+void merge_two_sequences (const char* source, char* target, const long sequence_length) {
+    for (long char_index = 0; char_index < sequence_length; char_index ++) {
+        if (target[char_index] == GAP &&  source[char_index]!=GAP) {
+            target[char_index] = source[char_index!=GAP];
+        }
+    }
+}
+
+
+//---------------------------------------------------------------
+
+long perfect_match (const char* source, char* target, const long sequence_length) {
+    long matched_bases = 0;
+    for (long c = 0; c < sequence_length; c++) {
+        char c1 = source[c],
+             c2 = target[c];
+             
+        if (c1 == GAP || c2 == GAP) continue;
+        
+        if (c1 != c2) {
+            return -1;
+        }
+        
+        matched_bases ++;
+    }
+    return matched_bases;
+}
+
 /*---------------------------------------------------------------------------------------------------- */
 
 double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long* randomize, long min_overlap)
@@ -201,7 +231,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
     for (unsigned long p = 0; p < L; p++)
     {
         unsigned char c1, c2;
-
+        
         if (randomize) {
             long pi = randomize[p];
             c1 = s1[pi];
@@ -239,18 +269,18 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
                     if (resolutionsCount[c2] > 0.)
                     {
                         if (matchMode == RESOLVE)
-                            if (resolutions[c2] & (1 << c1))
+                            if (resolutions[c2][c1])
                             {
                                 pairwiseCounts[c1][c1] += 1.;
                                 continue;
                             }
-                        if (resolutions[c2] & RESOLVE_A)
+                        if (resolutions[c2][0])
                             pairwiseCounts[c1][0] += resolutionsCount[c2];
-                        if (resolutions[c2] & RESOLVE_C)
+                        if (resolutions[c2][1])
                             pairwiseCounts[c1][1] += resolutionsCount[c2];
-                        if (resolutions[c2] & RESOLVE_G)
+                        if (resolutions[c2][2])
                             pairwiseCounts[c1][2] += resolutionsCount[c2];
-                        if (resolutions[c2] & RESOLVE_T)
+                        if (resolutions[c2][3])
                             pairwiseCounts[c1][3] += resolutionsCount[c2];
                     }
                 }
@@ -265,19 +295,19 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
                     if (resolutionsCount[c1] > 0.)
                     {
                         if (matchMode == RESOLVE)
-                            if (resolutions[c1] & (1 << c2))
+                            if (resolutions[c1][c2])
                             {
                                 pairwiseCounts[c2][c2] += 1.;
                                 continue;
                             }
 
-                        if (resolutions[c1] & RESOLVE_A)
+                        if (resolutions[c1][0])
                             pairwiseCounts[0][c2] += resolutionsCount[c1];
-                        if (resolutions[c1] & RESOLVE_C)
+                        if (resolutions[c1][1])
                             pairwiseCounts[1][c2] += resolutionsCount[c1];
-                        if (resolutions[c1] & RESOLVE_G)
+                        if (resolutions[c1][2])
                             pairwiseCounts[2][c2] += resolutionsCount[c1];
-                        if (resolutions[c1] & RESOLVE_T)
+                        if (resolutions[c1][3])
                             pairwiseCounts[3][c2] += resolutionsCount[c1];
                     }
                 }
@@ -292,15 +322,13 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
 
                         }
 
-                        char indexer = 1;
-                        for (long i = 0; i < 4; i ++, indexer <<= 1)
+                        for (long i = 0; i < 4; i ++)
                         {
-                            if (resolutions[c1] & indexer)
+                            if (resolutions[c1][i])
                             {
-                                char indexer2 = 1;
-                                for (long j = 0; j < 4; j ++, indexer2 <<= 1)
+                                for (long j = 0; j < 4; j ++)
                                 {
-                                    if (resolutions [c2] & indexer2)
+                                    if (resolutions [c2][j])
                                     {
                                         pairwiseCounts[i][j] += norm;
                                     }
@@ -506,6 +534,7 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
                              } 
                             //cerr << endl << "Returning a sequence" << endl;
                             automatonState = 0;
+                            sequences.appendChar ('\0');
                             ungetc (currentC, F);
                             return 2;
                         }
@@ -532,6 +561,15 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
 
 //---------------------------------------------------------------
 
+void dump_fasta (const char* mapped_characters, const long firstSequenceLength, FILE *output) {
+    for (long c = 0; c < firstSequenceLength; c++) {
+        fputc( ValidChars[mapped_characters[c]], output);
+    }
+    fprintf (output, "\n"); 
+}
+
+//---------------------------------------------------------------
+
 void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d) {
     if (d) {
         fprintf (output, ">%s [%g, %g]\n", stringText (names, nameLengths, index), d[0], d[1]);
@@ -540,10 +578,7 @@ void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceL
     }
 
     char *s1 = stringText (sequences, seqLengths, index);
-    for (long c = 0; c < firstSequenceLength; c++) {
-        fputc( ValidChars[s1[c]], output);
-    }
-    fprintf (output, "\n");
+    dump_fasta (s1, firstSequenceLength, output);
 }
 
 

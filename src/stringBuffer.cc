@@ -49,10 +49,10 @@ void StringBuffer::appendChar (const char c)
 
 /*---------------------------------------------------------------------------------------------------- */
 
-void StringBuffer::appendBuffer (const char *buffer)
+void StringBuffer::appendBuffer (const char *buffer, const long length)
 {
     long addThis,
-         pl = strlen(buffer);
+         pl = length > 0? length : strlen(buffer);
 
     if (pl>0)
     {

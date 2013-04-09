@@ -32,7 +32,9 @@ void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firs
 int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne = false);
 void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d = NULL);
 void initAlphabets(void);
-
+void merge_two_sequences (const char* source, char* target, const long sequence_length);
+long perfect_match (const char* source, char* target, const long sequence_length);
+void dump_fasta (const char* source, const long sequence_length, FILE* output);
 
 extern StringBuffer names,
        sequences;
