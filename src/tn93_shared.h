@@ -34,7 +34,7 @@ void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceL
 void initAlphabets(void);
 void merge_two_sequences (const char* source, char* target, const long sequence_length);
 long perfect_match (const char* source, char* target, const long sequence_length);
-void dump_fasta (const char* source, const long sequence_length, FILE* output);
+void dump_fasta (const char* source, const long sequence_length, FILE* output, bool newln = true);
 
 extern StringBuffer names,
        sequences;

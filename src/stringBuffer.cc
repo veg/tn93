@@ -4,6 +4,8 @@
 #include <cfloat>
 #include <iostream>
 
+#define SWAP(A,B,C) ({(C)=(A); (A)=(B); (B)=(C);})
+
 using namespace std;
 
 long StringBuffer::sbDefaultLength = 16,
@@ -21,6 +23,17 @@ StringBuffer::StringBuffer (void)
     saLength = StringBuffer::sbDefaultLength;
     sData = (char*)malloc (sizeof(char)*(saLength+1));
     sData[0] = 0;
+}
+
+/*---------------------------------------------------------------------------------------------------- */
+
+void StringBuffer::swap (StringBuffer& src)
+{
+    long t;
+    SWAP (sLength, src.sLength, t);
+    SWAP (saLength, src.saLength, t);
+    char * tc;
+    SWAP (sData, src.sData, tc);
 }
 
 /*---------------------------------------------------------------------------------------------------- */
@@ -90,6 +103,18 @@ Vector::Vector (void)
     vLength  = 0;
     vaLength = Vector::vDefaultLength;
     vData = (long*)malloc (sizeof(long)*vaLength);
+}
+
+
+/*---------------------------------------------------------------------------------------------------- */
+
+void Vector::swap (Vector& src)
+{
+    long t;
+    SWAP (vLength, src.vLength, t);
+    SWAP (vaLength, src.vaLength, t);
+    long * tc;
+    SWAP (vData, src.vData, tc);
 }
 
 /*---------------------------------------------------------------------------------------------------- */

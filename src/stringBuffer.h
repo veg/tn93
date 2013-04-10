@@ -21,13 +21,14 @@ public:
     void					appendChar		(const char);
     void					appendBuffer	(const char*, const long = -1);
     void					resetString		(void);
+    void                    swap            (StringBuffer&);
     unsigned long			length			(void) {
         return sLength;
     }
 
 
     static	long				sbDefaultLength,
-                        sbDefaultBoost;
+                                sbDefaultBoost;
 
 };
 
@@ -85,6 +86,7 @@ public:
     void					storeValue		(const long, const unsigned long);
     void					storeVector		(const Vector&, const unsigned long);
     void					sort			(void);
+    void                    swap            (Vector&);
     long					value			(const long idx) {
         return vData[idx];
     }

@@ -175,7 +175,7 @@ char* stringText (StringBuffer& strings, Vector& lengths, unsigned long index)
 void merge_two_sequences (const char* source, char* target, const long sequence_length) {
     for (long char_index = 0; char_index < sequence_length; char_index ++) {
         if (target[char_index] == GAP &&  source[char_index]!=GAP) {
-            target[char_index] = source[char_index!=GAP];
+            target[char_index] = source[char_index];
         }
     }
 }
@@ -561,11 +561,13 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
 
 //---------------------------------------------------------------
 
-void dump_fasta (const char* mapped_characters, const long firstSequenceLength, FILE *output) {
+void dump_fasta (const char* mapped_characters, const long firstSequenceLength, FILE *output, bool newln) {
     for (long c = 0; c < firstSequenceLength; c++) {
         fputc( ValidChars[mapped_characters[c]], output);
     }
-    fprintf (output, "\n"); 
+    if (newln) {
+        fprintf (output, "\n"); 
+    }
 }
 
 //---------------------------------------------------------------
