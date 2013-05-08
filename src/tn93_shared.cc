@@ -149,6 +149,11 @@ unsigned long genrand_int32(void)
     return y;
 }
 
+//---------------------------------------------------------------
+
+const long* resolve_char (unsigned char c) {
+    return resolutions [c];
+}
 
 //---------------------------------------------------------------
 

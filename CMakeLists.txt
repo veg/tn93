@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(BinMix)
+project(TN93)
 
 #-------------------------------------------------------------------------------
 # default installation prefix
@@ -15,14 +15,86 @@ include_directories(
 )
 
 add_executable(
-    BinMix
-    src/BinomialMixture.cpp
+    TN93dist
+    src/TN93.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
 )
 
+add_executable(
+    read_reducer
+    src/read_reducer.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+)
+
+add_executable(
+    nucfreqsfasta
+    src/nuc_freqs_from_fasta.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+)
+
+add_executable(
+    ShortestPathTN93
+    src/ShortestPathTN93.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+)
+
+set(DEFAULT_COMPILE_FLAGS "-O3")
+set(DEFAULT_LINK_FLAGS "${DEFAULT_COMPILE_FLAGS}")
+
+find_package(OpenMP)
+
+if (${OPENMP_FOUND})
+	set_target_properties(
+		TN93dist
+		PROPERTIES
+		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
+		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
+	)
+	set_target_properties(
+		ShortestPathTN93
+		PROPERTIES
+		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
+		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
+    )
+	set_target_properties(
+		read_reducer
+		PROPERTIES
+		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
+		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
+    )
+endif (${OPENMP_FOUND})
 
 install(
-    TARGETS BinMix
+    TARGETS TN93dist
 	RUNTIME DESTINATION bin
 	OPTIONAL
 )
 
+add_custom_target(TN93 
+	DEPENDS TN93dist
+)
+
+
+install(
+    TARGETS ShortestPathTN93
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
+add_custom_target(TN93SP
+	DEPENDS ShortestPathTN93
+)
+
+install(
+    TARGETS nucfreqsfasta
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
+add_custom_target(NF
+	DEPENDS nucfreqsfasta
+)

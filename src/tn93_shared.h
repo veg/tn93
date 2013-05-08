@@ -36,6 +36,8 @@ void merge_two_sequences (const char* source, char* target, const long sequence_
 long perfect_match (const char* source, char* target, const long sequence_length);
 void dump_fasta (const char* source, const long sequence_length, FILE* output, bool newln = true);
 
+const long * resolve_char (unsigned char);
+
 extern StringBuffer names,
        sequences;
 
