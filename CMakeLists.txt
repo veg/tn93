@@ -42,6 +42,13 @@ add_executable(
     src/tn93_shared.cc
 )
 
+add_executable(
+    FastaValidator 
+    src/FastaValidator.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+)
+
 set(DEFAULT_COMPILE_FLAGS "-O3")
 set(DEFAULT_LINK_FLAGS "${DEFAULT_COMPILE_FLAGS}")
 
@@ -98,3 +105,10 @@ install(
 add_custom_target(NF
 	DEPENDS nucfreqsfasta
 )
+
+install(
+    TARGETS FastaValidator
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
