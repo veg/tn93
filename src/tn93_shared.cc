@@ -520,7 +520,7 @@ int validateFASTA (FILE* F) {
                 currentC = toupper (currentC);
                 if (validFlags [currentC] >= 0) {
                     //cout << "Append " << currentC << endl;
-                    sequences.appendChar (validFlags [currentC]);
+                    //sequences.appendChar (validFlags [currentC]);
                 }
                 else {
                     if (currentC == '>' || currentC == '#') {
