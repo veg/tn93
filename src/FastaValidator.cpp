@@ -26,17 +26,8 @@ int main (int argc, const char * argv[])
         return 1;
     }
 
-    StringBuffer names, sequences;
-    Vector nameLengths, seqLengths;
-    char automatonState = 0;
-
-    // 0 - between sequences
-    // 1 - reading sequence name
-    // 2 - reading sequence
-    nameLengths.appendValue (0);
-    seqLengths.appendValue (0);
     initAlphabets();
-    if (readFASTA (F, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength) == 1)
+    if (validateFASTA (F) == 1)
         return 1;
 
     fclose(F);

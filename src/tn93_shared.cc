@@ -482,6 +482,69 @@ void initAlphabets (void) {
 
 //---------------------------------------------------------------
 
+int validateFASTA (FILE* F) {
+
+    char automatonState = 0;
+    StringBuffer names;
+    Vector nameLengths;
+    nameLengths.appendValue(0);
+
+    while (1)
+    {
+        int currentC = fgetc (F);
+        //cout << "State: " << int(automatonState) << "/'" << char(currentC) << "'" << endl;
+        if (feof (F))
+            break;
+        switch (automatonState) {
+            case 0: {
+                if (currentC == '>' || currentC == '#')
+                    automatonState = 1;
+                break;
+            }
+            case 1: {
+                if (currentC == '\n' || currentC == '\r') {
+                    names.appendChar   ('\0');
+                    nameLengths.appendValue (names.length());
+                    if (stringLength (nameLengths, nameLengths.length()-2) <= 0) {
+                        cerr << "Sequence names must be non-empty." << endl;
+                        return 1;
+                    }
+                    automatonState = 2;
+                }
+                else {
+                    names.appendChar (currentC);
+                }
+                break;
+            }
+            case 2: {
+                currentC = toupper (currentC);
+                if (validFlags [currentC] >= 0) {
+                    //cout << "Append " << currentC << endl;
+                    sequences.appendChar (validFlags [currentC]);
+                }
+                else {
+                    if (currentC == '>' || currentC == '#') {
+                        automatonState = 1;
+                   }
+                }
+                break;
+            }
+        }
+    }
+
+    if (automatonState == 2) {
+        automatonState = 1;
+    } else {
+        cerr << "Unexpected end of file: state " << int(automatonState) << endl;
+        return 1;
+    }
+    return 0;
+}
+
+
+
+//---------------------------------------------------------------
+
 int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne) {
     
     if (oneByOne) {
