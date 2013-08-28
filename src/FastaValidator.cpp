@@ -9,7 +9,7 @@ static char Usage[] = "Validate FASTA"
 
 int main (int argc, const char * argv[])
 {
-    if (argc < 1)
+    if (argc != 2)
     {
         cerr << "Usage is `" << Usage << "'." << endl;
         exit(1);
