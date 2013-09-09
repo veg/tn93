@@ -348,12 +348,12 @@ int main (int argc, const char * argv[])
       outStream = &cerr;
     }
     
-    (*outStream) << "{" << endl << '\t' << "'Actual comparisons performed' :" << pairwise-skipped_comparisons << ',' << endl;
-    (*outStream) << "\t'Total comparisons possible' : " << pairwise << ',' << endl;
-    (*outStream) << "\t'Links found' : " << foundLinks << ',' << endl;
-    (*outStream) << "\t'Maximum distance' : " << max << ',' << endl;
-    (*outStream) << "\t'Mean distance' : " << mean/(pairwise-skipped_comparisons) << ',' << endl;
-    (*outStream) << "\t'Histogram' : [";
+    (*outStream) << "{" << endl << '\t' << "\"Actual comparisons performed\" :" << pairwise-skipped_comparisons << ',' << endl;
+    (*outStream) << "\t\"Total comparisons possible\" : " << pairwise << ',' << endl;
+    (*outStream) << "\t\"Links found\" : " << foundLinks << ',' << endl;
+    (*outStream) << "\t\"Maximum distance\" : " << max << ',' << endl;
+    (*outStream) << "\t\"Mean distance\" : " << mean/(pairwise-skipped_comparisons) << ',' << endl;
+    (*outStream) << "\t\"Histogram\" : [";
     for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
       if (k) {
         (*outStream) << ',';
