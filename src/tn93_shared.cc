@@ -14,6 +14,8 @@
 #define  RESOLVE_G 0x04
 #define  RESOLVE_T 0x08
 
+#define  TN93_MAX_DIST 1000.0
+
 using namespace std;
 
 StringBuffer names,
@@ -207,7 +209,8 @@ long perfect_match (const char* source, char* target, const long sequence_length
 
 /*---------------------------------------------------------------------------------------------------- */
 
-double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long* randomize, long min_overlap)
+double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long* randomize, long min_overlap,
+    unsigned long* histogram, double slice, unsigned long hist_size)
 {
     char useK2P   = 0;
 
@@ -421,6 +424,9 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
     tv = 1.-((pairwiseCounts[0][0] + pairwiseCounts[1][1] + pairwiseCounts[2][2] + pairwiseCounts[3][3])*totalNonGap +
              AG+CT);
 
+    
+    double dist;
+
 
     if (useK2P)
     {
@@ -428,7 +434,9 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
         AG = 1.-2.*ti-tv;
         CT = 1.-2.*tv;
         if (AG > 0. && CT > 0.)
-            return -0.5*log(AG)-0.25*log(CT);
+            dist = -0.5*log(AG)-0.25*log(CT);
+        else  
+          dist = TN93_MAX_DIST;
     }
     else
     {
@@ -436,10 +444,20 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
         CT	= 1.-CT/K2 - 0.5*tv/fY;
         tv  = 1.-0.5 * tv/fY/fR;
         if (AG > 0. && CT > 0. && tv > 0)
-            return - K1*log(AG) - K2*log(CT) - K3 * log (tv);
+            dist = - K1*log(AG) - K2*log(CT) - K3 * log (tv);
+        else
+          dist = TN93_MAX_DIST;
+    }
+    
+    if (histogram) {
+      long index = floor(dist * slice);
+      if (index >= hist_size) {
+        index = hist_size - 1;
+      }
+      histogram[index] ++;
     }
 
-    return 1000.0;
+    return dist;
 }
 
 

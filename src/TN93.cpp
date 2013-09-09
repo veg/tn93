@@ -1,7 +1,15 @@
 
 #include "tn93_shared.h"
 
+#ifdef  _OPENMP
+  #include "omp.h"
+#endif
+
+
 using namespace std;
+
+#define HISTOGRAM_BINS 200
+#define HISTOGRAM_SLICE ((double)HISTOGRAM_BINS)
 
 static char Usage[] = "TN93dist"
                       "\n\t<FASTA file OR - for stdin >"
@@ -152,7 +160,7 @@ int main (int argc, const char * argv[])
                           max_site   = 0;
 
 
-            for (long i = 0; i < firstSequenceLength; i++) {
+            for (unsigned long i = 0; i < firstSequenceLength; i++) {
                 randFlag[i] = genrand_int32 () / normalizer;
                 cerr << randFlag[i] << " ";
                 included[randFlag[i]] = true;
@@ -170,17 +178,14 @@ int main (int argc, const char * argv[])
             if (argc == 9) {
                 randSeqs = new long [sequenceCount];
 
-                for (long k = 0; k < sequenceCount; k++) {
+                for (unsigned long k = 0; k < sequenceCount; k++) {
                     randSeqs [k] = k;
                 }
 
                 init_genrand (time(NULL) + getpid ());
 
-                unsigned long normalizer = RAND_RANGE / firstSequenceLength,
-                              max_site   = 0;
 
-
-                for (long i = 0; i < sequenceCount; i++) {
+                for (unsigned long i = 0; i < sequenceCount; i++) {
                     long id = genrand_int32 () / (RAND_RANGE / (sequenceCount-i)),
                          t = randSeqs[i+id];
                     randSeqs[i+id]= randSeqs[i];
@@ -221,76 +226,101 @@ int main (int argc, const char * argv[])
 
     long upperBound = argc == 9 ? seqLengthInFile1 : sequenceCount,
          skipped_comparisons = 0;
+         
+    
+    unsigned long global_hist [HISTOGRAM_BINS];
+    for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
+      global_hist[k] = 0;
+    }
+    
 
-    #pragma omp parallel for default(none) shared(count_only, skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2, min_overlap, mean, randSeqs)
-    for (long seq1 = 0; seq1 < upperBound; seq1 ++)
+    #pragma omp parallel shared(count_only, skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2, min_overlap, mean, randSeqs)
+    
     {
-        long mapped_id = randSeqs?randSeqs[seq1]:seq1;
+    
+      unsigned long histogram_counts [HISTOGRAM_BINS];
+      for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
+        histogram_counts[k] = 0;
+      }
+    
+      #pragma omp for schedule (dynamic)
+      for (long seq1 = 0; seq1 < upperBound; seq1 ++)
+      {
+          long mapped_id = randSeqs?randSeqs[seq1]:seq1;
 
-        char *n1 = stringText (names, nameLengths, mapped_id),
-              *s1 = stringText(sequences, seqLengths, mapped_id);
+          char *n1 = stringText (names, nameLengths, mapped_id),
+                *s1 = stringText(sequences, seqLengths, mapped_id);
 
-        long lowerBound = argc == 9 ? seqLengthInFile1 : seq1 +1,
-             compsSkipped = 0;
+          long lowerBound = argc == 9 ? seqLengthInFile1 : seq1 +1,
+               compsSkipped      = 0,
+               local_links_found = 0;
 
-        double local_max = 0.,
-               local_sum = 0.;
+          double local_max = 0.,
+                 local_sum = 0.;
 
-        for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
-        {
-            long mapped_id2 = randSeqs?randSeqs[seq2]:seq2;
-            double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, min_overlap);
+          for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
+          {
+              long mapped_id2 = randSeqs?randSeqs[seq2]:seq2;
+              double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, min_overlap, histogram_counts, HISTOGRAM_SLICE, HISTOGRAM_BINS);
 
-            if (thisD >= -1e-10 && thisD <= distanceThreshold)
-            {
-                #pragma omp critical
-                foundLinks ++;
-                //char *s2 = stringText(sequences, seqLengths, seq1);
-                if (!count_only) {
-                    if (doCSV == 1) {
-                        #pragma omp critical
-                        fprintf (FO,"%s,%s,%g\n", n1, stringText (names, nameLengths, mapped_id2), thisD);
-                    } else {
-                        if (doCSV == 2) {
-                            #pragma omp critical
-                            fprintf (FO,"%ld,%ld,%g\n", mapped_id, mapped_id2, thisD);
+              if (thisD >= -1e-10 && thisD <= distanceThreshold)
+              {
+                  local_links_found ++;
+                  //char *s2 = stringText(sequences, seqLengths, seq1);
+                  if (!count_only) {
+                      if (doCSV == 1) {
+                          #pragma omp critical
+                          fprintf (FO,"%s,%s,%g\n", n1, stringText (names, nameLengths, mapped_id2), thisD);
+                      } else {
+                          if (doCSV == 2) {
+                              #pragma omp critical
+                              fprintf (FO,"%ld,%ld,%g\n", mapped_id, mapped_id2, thisD);
 
-                        } else {
-                            distanceMatrix[mapped_id*sequenceCount+mapped_id2] = thisD;
-                            distanceMatrix[mapped_id2*sequenceCount+mapped_id] = thisD;
-                        }
-                    }
-                }
-            }
-            if (thisD <= -0.5) {
-                compsSkipped ++;
-            }
-            else {
-                local_sum += thisD;
-                if (thisD > local_max) {
-                    local_max = thisD;
-                }
-            }
+                          } else {
+                              distanceMatrix[mapped_id*sequenceCount+mapped_id2] = thisD;
+                              distanceMatrix[mapped_id2*sequenceCount+mapped_id] = thisD;
+                          }
+                      }
+                  }
+              }
+              if (thisD <= -0.5) {
+                  compsSkipped ++;
+              }
+              else {
+                  local_sum += thisD;
+                  if (thisD > local_max) {
+                      local_max = thisD;
+                  }
+              }
 
 
+          }
+          #pragma omp critical
+          {
+              foundLinks += local_links_found;
+              skipped_comparisons += compsSkipped;
+              if (local_max > max) {
+                  max = local_max;
+              }
+              pairIndex += (argc < 9) ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
+              mean += local_sum;
+          }
+
+          if (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1)
+          {
+              #pragma omp critical
+              percentDone = pairIndex * 100. / pairwise;
+              #pragma omp critical
+              cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b" << setw(8) << percentDone << "% (" << setw(8) << foundLinks << " links found)";
+          }
+      }
+      #pragma omp critical
+      {
+        for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
+          global_hist[k] += histogram_counts[k];
         }
-        #pragma omp critical
-        {
-            skipped_comparisons += compsSkipped;
-            if (local_max > max) {
-                max = local_max;
-            }
-            pairIndex += (argc < 9) ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
-            mean += local_sum;
-        }
-
-        if (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1)
-        {
-            #pragma omp critical
-            percentDone = pairIndex * 100. / pairwise;
-            #pragma omp critical
-            cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b" << setw(8) << percentDone << "% (" << setw(8) << foundLinks << " links found)";
-        }
+      }
+      
     }
 
     if (!count_only && !doCSV)
@@ -311,10 +341,29 @@ int main (int argc, const char * argv[])
     }
 
     cerr << endl;
-    cerr << "Actual comparisons performed " << pairwise-skipped_comparisons << endl;
-    cerr << "Mean distance = " << mean/(pairwise-skipped_comparisons) << endl;
-    cerr << "Maximum distance = " << max << endl;
-
+    
+    ostream * outStream = &cout;
+    
+    if (FO == stdout) {
+      outStream = &cerr;
+    }
+    
+    (*outStream) << "{" << endl << '\t' << "'Actual comparisons performed' :" << pairwise-skipped_comparisons << ',' << endl;
+    (*outStream) << "\t'Total comparisons possible' : " << pairwise << ',' << endl;
+    (*outStream) << "\t'Links found' : " << foundLinks << ',' << endl;
+    (*outStream) << "\t'Maximum distance' : " << max << ',' << endl;
+    (*outStream) << "\t'Mean distance' : " << mean/(pairwise-skipped_comparisons) << ',' << endl;
+    (*outStream) << "\t'Histogram' : [";
+    for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
+      if (k) {
+        (*outStream) << ',';
+      }
+      (*outStream) << '[' << (k+1.) / HISTOGRAM_BINS << ',' << global_hist[k] << ']';
+    }
+    (*outStream) << "]" << endl;
+    
+    (*outStream) << '}' << endl;
+    
     if (count_only) {
         cout << "Found " << foundLinks << " links among " << pairwise-skipped_comparisons << " pairwise comparisons" << endl;
     }
