@@ -43,13 +43,13 @@ ARGUMENTS
 					path to the output file, which will be either 
 					CSV or HyPhy matrix format (see output format)
 
-	distance thershold 	: <required> 
+	distance threshold 	: <required> 
 						a real-valued number between 0 and 1. 
 						Only pairwise distances <= this number will be written out. 
 						This is very useful for rapid processing of very large aligments
 						when one is looking for epidemiological linkage
 					  
-	how to handle ambiguitie : <required> 
+	how to handle ambiguities : <required> 
 							how to count ambiguities when computing the matrix of pairwise letter counts.
 							One of three values
 								RESOLVE: if one character is resolved (e.g. A,C,G,T) and the other is an ambiguity, 
