@@ -500,7 +500,7 @@ void initAlphabets (void) {
 
 //---------------------------------------------------------------
 
-int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne) {
+int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne, Vector* sequenceInstances) {
     
     if (oneByOne) {
         sequences.resetString();

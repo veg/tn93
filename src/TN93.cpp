@@ -5,6 +5,8 @@
   #include "omp.h"
 #endif
 
+#include "argparse.hpp"
+
 
 using namespace std;
 
@@ -95,7 +97,8 @@ int main (int argc, const char * argv[])
                  sequences;
 
     Vector       nameLengths,
-                 seqLengths;
+                 seqLengths,
+                 counts;
 
 
 

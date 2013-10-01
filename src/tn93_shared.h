@@ -29,7 +29,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
 long stringLength (Vector& lengths, unsigned long index);
 char* stringText (StringBuffer& strings, Vector& lengths, unsigned long index);
 void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firstSequenceLength, StringBuffer& names, Vector& nameLengths);
-int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne = false);
+int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne = false,  Vector* sequenceInstances = NULL);
 void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d = NULL);
 void initAlphabets(void);
 void merge_two_sequences (const char* source, char* target, const long sequence_length);

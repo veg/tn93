@@ -15,7 +15,7 @@ include_directories(
 )
 
 add_executable(
-    TN93dist
+    tn93
     src/TN93.cpp
     src/stringBuffer.cc
     src/tn93_shared.cc
@@ -49,7 +49,7 @@ find_package(OpenMP)
 
 if (${OPENMP_FOUND})
 	set_target_properties(
-		TN93dist
+		tn93
 		PROPERTIES
 		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
 		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
@@ -69,13 +69,13 @@ if (${OPENMP_FOUND})
 endif (${OPENMP_FOUND})
 
 install(
-    TARGETS TN93dist
+    TARGETS tn93
 	RUNTIME DESTINATION bin
 	OPTIONAL
 )
 
 add_custom_target(TN93 
-	DEPENDS TN93dist
+	DEPENDS tn93
 )
 
 
