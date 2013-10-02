@@ -2,7 +2,9 @@ TN93
 ----
 
 This is a simple program meant to compute pairwise distances between aligned 
-nucleotide sequences in sequential FASTA format using TN93.
+nucleotide sequences in sequential FASTA format using the 
+[Tamura Nei 93 distance](http://www.ncbi.nlm.nih.gov/pubmed/8336541).
+
 
 To build, you need to use cmake. Type 
 
