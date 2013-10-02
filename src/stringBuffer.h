@@ -25,6 +25,7 @@ public:
     unsigned long			length			(void) {
         return sLength;
     }
+    char          getChar      (const long i) const {return sData[i];}
 
 
     static	long				sbDefaultLength,

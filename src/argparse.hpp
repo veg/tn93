@@ -43,6 +43,7 @@ namespace argparse
         unsigned long   overlap;
         bool            do_bootstrap;
         bool            do_count;
+        bool            quiet;
         char            counts_in_name;
         
         args_t( int, const char ** );
@@ -59,6 +60,7 @@ namespace argparse
         void parse_counts_in_name   ( const char * );
         void parse_bootstrap( void );
         void parse_count( void );
+        void parse_quiet ( void );
       
     };
 }

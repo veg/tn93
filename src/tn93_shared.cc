@@ -210,10 +210,9 @@ long perfect_match (const char* source, char* target, const long sequence_length
 /*---------------------------------------------------------------------------------------------------- */
 
 double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long* randomize, long min_overlap,
-    unsigned long* histogram, double slice, unsigned long hist_size)
-{
+    unsigned long* histogram, double slice, unsigned long hist_size, long count1, long count2) {
+    
     char useK2P   = 0;
-
     long aux1;
 
     double auxd,
@@ -236,21 +235,22 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
             pairwiseCounts[i][j] = 0.;
 
 
-    for (unsigned long p = 0; p < L; p++)
-    {
+    for (unsigned long p = 0; p < L; p++) {
         unsigned char c1, c2;
         
-        if (randomize) {
+        if (randomize == NULL) {
+            c1 = s1[p];
+            c2 = s2[p];
+        } else {
             long pi = randomize[p];
             c1 = s1[pi];
             c2 = s2[pi];
-        } else {
-            c1 = s1[p];
-            c2 = s2[p];
         }
 
         if (c1 == GAP || c2 == GAP) {
-            if (matchMode == GAPMM) {
+            if (matchMode != GAPMM) {
+              continue;
+            } else {
                 if (c1 == GAP && c2 == GAP)
                     continue;
                 else {
@@ -259,29 +259,23 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
                     } else {
                         c2 = N_CHAR;
                     }
-                }
-            } else
-                continue;
+                } 
+              } 
         }
 
-        if (c1 < 4)
-        {
-            if (c2 < 4)
-            {
+        if (c1 < 4) {
+            if (c2 < 4) {
                 pairwiseCounts [c1][c2] += 1.;
             }
-            else
-            {
-                if (matchMode != SKIP)
-                {
-                    if (resolutionsCount[c2] > 0.)
-                    {
+            else {
+                if (matchMode != SKIP) {
+                    if (resolutionsCount[c2] > 0.) {
                         if (matchMode == RESOLVE)
-                            if (resolutions[c2][c1])
-                            {
+                            if (resolutions[c2][c1]) {
                                 pairwiseCounts[c1][c1] += 1.;
                                 continue;
                             }
+                            
                         if (resolutions[c2][0])
                             pairwiseCounts[c1][0] += resolutionsCount[c2];
                         if (resolutions[c2][1])
@@ -350,56 +344,18 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
     }
 
 
-    for (long c1 = 0; c1 < 4; c1++)
-        for (long c2 = 0; c2 < 4; c2++)
+    for (unsigned long c1 = 0; c1 < 4; c1++)
+        for (unsigned long c2 = 0; c2 < 4; c2++)
         {
-            totalNonGap   += pairwiseCounts[c1][c2];
-            nucFreq [c1]  += pairwiseCounts[c1][c2];
-            nucFreq [c2]  += pairwiseCounts[c1][c2];
+            double pc = pairwiseCounts[c1][c2];
+            totalNonGap   += pc;
+            nucFreq [c1]  += pc;
+            nucFreq [c2]  += pc;
         }
 
     if (totalNonGap <= min_overlap) {
         return -1.;
     }
-
-    /*char	 nucs[]   = "ACGT",
-    spacer[]  = "               ",
-    spacer2[] = "----------------";
-
-    cout << endl << totalNonGap << endl;
-
-    fprintf (stderr,"\n\nPairiwse character counts\n*-%s|%s|%s|%s*\n", spacer2, spacer2, spacer2, spacer2);
-    fprintf (stderr,"  %sA|%sC|%sG|%sT|\n",spacer,spacer,spacer,spacer);
-    fprintf (stderr,"*-%s|%s|%s|%s*\n", spacer2, spacer2, spacer2, spacer2);
-    for (aux1 = 0; aux1 < 4; aux1++)
-    {
-        fprintf (stderr,"%c|",nucs[aux1]);
-        for (aux2 = 0; aux2 < 4; aux2++)
-        {
-            fprintf (stderr,"%8g %6.2f%%|", pairwiseCounts[aux1][aux2], 100.*pairwiseCounts[aux1][aux2]/totalNonGap);
-        }
-        fprintf (stderr,"\n");
-    }
-    fprintf (stderr,"*-%s|%s|%s|%s*\n* ", spacer2, spacer2, spacer2, spacer2);
-    for (aux1 = 0; aux1 < 4; aux1++)
-    {
-        fprintf (stderr,"%8g %6.2f%%|", nucFreq[aux1], 50.*nucFreq[aux1]/totalNonGap);
-    }
-    fprintf (stderr,"\n");
-    fprintf (stderr,"*-%s|%s|%s|%s*\n* ", spacer2, spacer2, spacer2, spacer2);
-
-    aux1 = totalNonGap-pairwiseCounts[0][0]-pairwiseCounts[1][1]-pairwiseCounts[2][2]-pairwiseCounts[3][3];
-    fprintf (stderr, "\n\nHamming distance: %ld\np-distance: %g\n\n", aux1, aux1/totalNonGap);
-    */
-
-    /*for (aux1 = 0; aux1 < 4; aux1++)
-    	for (aux2 = 0; aux2 < 4; aux2++)
-    	{
-    		nucFreq[aux1] += pairwiseCounts[aux1][aux2];
-    		nucFreq[aux2] += pairwiseCounts[aux1][aux2];
-    	}*/
-
-
 
     totalNonGap = 2./(nucFreq[0] + nucFreq[1] + nucFreq[2] + nucFreq[3]);
 
@@ -454,7 +410,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
       if (index >= hist_size) {
         index = hist_size - 1;
       }
-      histogram[index] ++;
+      histogram[index] += count1 * count2;
     }
 
     return dist;
@@ -533,6 +489,25 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
                         if (this_name_l <= 0) {
                             cerr << "Sequence names must be non-empty." << endl;
                             return 1;
+                        }
+                        if (sequenceInstances) {
+                          unsigned long count = 1L;
+                          if (this_name_l >= 3) {
+                            long sep_loc = 0, ll = names.length();
+                            for (sep_loc = 2; sep_loc < this_name_l; sep_loc ++) {
+                              if (names.getChar(ll-sep_loc-1) == sep) {
+                                break;
+                              }
+                            }
+                            if (sep_loc < this_name_l) {
+                              count = atoi (names.getString() + (ll-sep_loc));
+                            }
+                            if (count < 1) {
+                              count = 1;
+                            }
+                            //cerr << count << endl;
+                          }
+                          sequenceInstances->appendValue(count);
                         }
                     }
 

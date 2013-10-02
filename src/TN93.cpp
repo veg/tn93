@@ -43,7 +43,7 @@ int main (int argc, const char * argv[])
     nameLengths.appendValue (0);
     seqLengths.appendValue (0);
     initAlphabets();
-    if (readFASTA (args.input1, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength) == 1)
+    if (readFASTA (args.input1, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, false, &counts, args.counts_in_name) == 1)
         return 1;
 
 
@@ -51,18 +51,20 @@ int main (int argc, const char * argv[])
                   seqLengthInFile2 = 0;
 
     if (args.input2) {
-        if (readFASTA (args.input2, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength) == 1)
+        automatonState = 0;
+        if (readFASTA (args.input2, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, false, &counts, args.counts_in_name) == 1)
             return 1;
         seqLengthInFile2 = seqLengths.length()-1-seqLengthInFile1;
     }
 
     unsigned long sequenceCount = seqLengths.length()-1,
-                  pairwise      = argc == 9? seqLengthInFile2*seqLengthInFile1 : (sequenceCount-1) * (sequenceCount) / 2;
+                  pairwise      = args.input2 ? seqLengthInFile2*seqLengthInFile1 : (sequenceCount-1) * (sequenceCount) / 2;
 
-    if (args.input2 == NULL)
-        cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
-    else
-        cerr << "Read " << seqLengthInFile1 << " sequences from file 1 and " << seqLengthInFile2 << " sequences from file 2 of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
+    if (! args.quiet )
+      if (args.input2 == NULL)
+          cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
+      else
+          cerr << "Read " << seqLengthInFile1 << " sequences from file 1 and " << seqLengthInFile2 << " sequences from file 2 of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
 
     double percentDone = 0.,
            max         = 0.0,
@@ -76,7 +78,8 @@ int main (int argc, const char * argv[])
 
     if (args.do_bootstrap) {
         if (args.input2 == NULL) {
-            cerr << endl << "Randomizing site order..." << endl;
+            if (! args.quiet )
+              cerr << endl << "Randomizing site order..." << endl;
             randFlag = new long [firstSequenceLength];
             bool   *included = new bool [firstSequenceLength];
             for (long k = 0; k < firstSequenceLength; k++) {
@@ -84,13 +87,14 @@ int main (int argc, const char * argv[])
             }
             init_genrand (time(NULL) + getpid ());
 
-            unsigned long normalizer = RAND_RANGE / firstSequenceLength,
-                          max_site   = 0;
+            long normalizer = RAND_RANGE / firstSequenceLength,
+                 max_site   = 0;
 
 
-            for (unsigned long i = 0; i < firstSequenceLength; i++) {
+            for (long i = 0; i < firstSequenceLength; i++) {
                 randFlag[i] = genrand_int32 () / normalizer;
-                cerr << randFlag[i] << " ";
+                if (! args.quiet)
+                  cerr << randFlag[i] << " ";
                 included[randFlag[i]] = true;
                 if (randFlag[i] > max_site) max_site = randFlag[i];
             }
@@ -101,7 +105,8 @@ int main (int argc, const char * argv[])
             }
 
             delete [] included;
-            cerr << endl << "Unique sites included in the resampled order " << total_resampled << endl;
+            if (! args.quiet )
+              cerr << endl << "Unique sites included in the resampled order " << total_resampled << endl;
         } else {
               randSeqs = new long [sequenceCount];
               for (unsigned long k = 0; k < sequenceCount; k++) {
@@ -117,13 +122,14 @@ int main (int argc, const char * argv[])
                   randSeqs[i+id]= randSeqs[i];
                   randSeqs[i] = t;
               }
-              cerr << endl << "Randomized sequence assignment to datasets " << endl;
+              if (! args.quiet )
+                cerr << endl << "Randomized sequence assignment to datasets " << endl;
         }
     }
 
 
-
-    cerr << endl << "Progress: " << setw(8) << 0.0 << "% (" << setw(8) << 0 << " links found)";
+    if (! args.quiet )
+      cerr << endl << "Progress: ";
 
     long pairIndex  = 0,
          foundLinks = 0;
@@ -171,8 +177,12 @@ int main (int argc, const char * argv[])
       break;
       
   }
+  
+  time_t before, after;
+  time (&before); 
+  double weighted_counts = 0.;
 
-    #pragma omp parallel shared(count_only, skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs)
+    #pragma omp parallel shared(skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs, weighted_counts)
     
     {
     
@@ -191,18 +201,21 @@ int main (int argc, const char * argv[])
 
           long lowerBound = args.input2 ? seqLengthInFile1 : seq1 +1,
                compsSkipped      = 0,
-               local_links_found = 0;
+               local_links_found = 0,
+               instances1 = counts.value (mapped_id);
 
           double local_max = 0.,
-                 local_sum = 0.;
+                 local_sum = 0.,
+                 local_weighted = 0.;
 
           for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
           {
-              long mapped_id2 = randSeqs?randSeqs[seq2]:seq2;
-              double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, histogram_counts, HISTOGRAM_SLICE, HISTOGRAM_BINS);
+              long mapped_id2 = randSeqs?randSeqs[seq2]:seq2,
+                   instances2 = counts.value (mapped_id2);
+                   
+              double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, histogram_counts, HISTOGRAM_SLICE, HISTOGRAM_BINS, instances1, instances2);
 
-              if (thisD >= -1e-10 && thisD <= args.distance)
-              {
+              if (thisD >= -1.e-10 && thisD <= args.distance) {
                   local_links_found ++;
                   //char *s2 = stringText(sequences, seqLengths, seq1);
                   if (!args.do_count) {
@@ -225,7 +238,9 @@ int main (int argc, const char * argv[])
                   compsSkipped ++;
               }
               else {
-                  local_sum += thisD;
+                  long weighted_count = instances1*instances2;
+                  local_sum += thisD * (weighted_count);
+                  local_weighted += weighted_count;
                   if (thisD > local_max) {
                       local_max = thisD;
                   }
@@ -240,16 +255,24 @@ int main (int argc, const char * argv[])
               if (local_max > max) {
                   max = local_max;
               }
-              pairIndex += (argc < 9) ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
+              pairIndex += args.input2 == NULL ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
               mean += local_sum;
+              weighted_counts += local_weighted;
           }
+           
 
-          if (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1)
+          if (! args.quiet && (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1))
           {
               #pragma omp critical
+              {
+              time (&after);
               percentDone = pairIndex * 100. / pairwise;
-              #pragma omp critical
-              cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b" << setw(8) << percentDone << "% (" << setw(8) << foundLinks << " links found)";
+              cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:" 
+                   << setw (8) << percentDone << "% (" << setw(8) << foundLinks << " links found, "
+                   << setw (12) << std::setprecision(3) << pairIndex/difftime (after,before) << " evals/sec)";
+              
+              after = before;
+              }
           }
       }
       #pragma omp critical
@@ -290,7 +313,7 @@ int main (int argc, const char * argv[])
     (*outStream) << "\t\"Total comparisons possible\" : " << pairwise << ',' << endl;
     (*outStream) << "\t\"Links found\" : " << foundLinks << ',' << endl;
     (*outStream) << "\t\"Maximum distance\" : " << max << ',' << endl;
-    (*outStream) << "\t\"Mean distance\" : " << mean/(pairwise-skipped_comparisons) << ',' << endl;
+    (*outStream) << "\t\"Mean distance\" : " << mean/weighted_counts << ',' << endl;
     (*outStream) << "\t\"Histogram\" : [";
     for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
       if (k) {
