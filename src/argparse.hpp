@@ -4,29 +4,32 @@
 
 // argument defaults
 
-#define PROGNAME "tn93"
-#define DEFAULT_AMBIG             RESOLVE
-#define DEFAULT_FORMAT            CSV
+
+#define PROGNAME                 "tn93"
+#define DEFAULT_AMBIG             resolve
+#define DEFAULT_FORMAT            csv
 #define DEFAULT_DISTANCE          0.015
 #define DEFAULT_COUNTS_IN_NAME    ':'
-#define DEFAULT_OVERLAP           100UL
+#define DEFAULT_OVERLAP           100
+
 
 namespace argparse
 {
-    enum ambig_t {
-        RESOLVE,
-        AVERAGE,
-        SKIP,
-        GAPMM
-    };
-    
+  
     enum format_t {
-      CSV,
-      CSV_N,
-      HYPHY
+      csv,
+      csvn,
+      hyphy
     };
 
-    class args_t
+    enum ambig_t {
+      resolve,
+      average,
+      skip,
+      gapmm
+    };
+
+  class args_t
     {
     public:
  
@@ -52,9 +55,11 @@ namespace argparse
         void parse_distance ( const char * );
         void parse_overlap  ( const char * );
         void parse_format   ( const char * );
+        void parse_ambig    ( const char * );
         void parse_counts_in_name   ( const char * );
         void parse_bootstrap( void );
-        
+        void parse_count( void );
+      
     };
 }
 

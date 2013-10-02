@@ -19,6 +19,7 @@ add_executable(
     src/TN93.cpp
     src/stringBuffer.cc
     src/tn93_shared.cc
+    src/argparse.cpp
 )
 
 add_executable(

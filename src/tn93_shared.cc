@@ -500,7 +500,7 @@ void initAlphabets (void) {
 
 //---------------------------------------------------------------
 
-int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne, Vector* sequenceInstances) {
+int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne, Vector* sequenceInstances, char sep) {
     
     if (oneByOne) {
         sequences.resetString();
@@ -529,7 +529,8 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
                         }                
                     } else {
                         nameLengths.appendValue (names.length());
-                        if (stringLength (nameLengths, nameLengths.length()-2) <= 0) {
+                        long this_name_l = stringLength (nameLengths, nameLengths.length()-2);
+                        if (this_name_l <= 0) {
                             cerr << "Sequence names must be non-empty." << endl;
                             return 1;
                         }
