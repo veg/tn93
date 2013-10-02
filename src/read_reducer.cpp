@@ -62,7 +62,7 @@ void merge_current_clusters (StringBuffer& current_clusters, Vector& sequence_le
             char * cluster1 = stringText(current_clusters, sequence_lengths, cluster_id);
             long try_cluster = -1;
             
-            #pragma omp parallel for default(none) shared(cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)
+            #pragma omp parallel for default(none) shared(sequence_lengths, current_clusters, cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)
                 for (long cluster_id2 = 0; cluster_id2 < cluster_id; cluster_id2 ++) {
                     #pragma omp flush (try_cluster)
                     if (try_cluster < 0 && cluster_merge.value(cluster_id2) >= 0) {
@@ -125,7 +125,7 @@ void handle_a_sequence (StringBuffer& current_sequence, StringBuffer& current_cl
     long try_cluster = -1;
     
     
-    #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster)
+    #pragma omp parallel for default(none) shared(current_clusters, currently_defined_clusters, try_cluster, current_sequence, sequence_lengths)
         for (long cluster_index = 0; cluster_index < currently_defined_clusters; cluster_index ++) {
             #pragma omp flush (try_cluster)
             if (try_cluster < 0) {

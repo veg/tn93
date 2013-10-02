@@ -267,7 +267,7 @@ int main (int argc, const char * argv[])
               {
               time (&after);
               percentDone = pairIndex * 100. / pairwise;
-              cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:" 
+              cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:" 
                    << setw (8) << percentDone << "% (" << setw(8) << foundLinks << " links found, "
                    << setw (12) << std::setprecision(3) << pairIndex/difftime (after,before) << " evals/sec)";
               
