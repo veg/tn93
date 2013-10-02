@@ -53,7 +53,7 @@ void exportJSON (FILE* out, long rows, long columns, const double* counts, bool 
       for (long c = 0; c < columns; c++) {
         if (counts [r*columns + c] > 0.0) {
           if (first) {
-            fprintf (out, "%c\n\t"\"%ld\" : {\"%c\" : %g", do_comma ? ',' : ' ', r + 1, unmap_char(c,do_prot), counts[r*columns+c]);
+            fprintf (out, "%c\n\t\"%ld\" : {\"%c\" : %g", do_comma ? ',' : ' ', r + 1, unmap_char(c,do_prot), counts[r*columns+c]);
             do_comma = true;
             first = false;
           } else {
