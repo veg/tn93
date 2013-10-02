@@ -22,6 +22,15 @@ add_executable(
     src/argparse.cpp
 )
 
+
+add_executable(
+    seqcoverage
+    src/charfreqs.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+    src/argparse_cf.cpp
+)
+
 add_executable(
     read_reducer
     src/read_reducer.cpp
@@ -56,6 +65,12 @@ if (${OPENMP_FOUND})
 		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
 	)
 	set_target_properties(
+		seqcoverage
+		PROPERTIES
+		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
+		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
+	)
+	set_target_properties(
 		ShortestPathTN93
 		PROPERTIES
 		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
@@ -75,6 +90,12 @@ install(
 	OPTIONAL
 )
 
+install(
+    TARGETS seqcoverage
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
 add_custom_target(TN93 
 	DEPENDS tn93
 )
@@ -88,6 +109,11 @@ install(
 
 add_custom_target(TN93SP
 	DEPENDS ShortestPathTN93
+)
+
+
+add_custom_target(SEQCOVERAGE
+	DEPENDS seqcoverage
 )
 
 install(

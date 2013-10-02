@@ -31,12 +31,14 @@ char* stringText (StringBuffer& strings, Vector& lengths, unsigned long index);
 void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firstSequenceLength, StringBuffer& names, Vector& nameLengths);
 int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne = false,  Vector* sequenceInstances = NULL, char sep = ':');
 void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d = NULL);
-void initAlphabets(void);
+void initAlphabets(bool = false);
 void merge_two_sequences (const char* source, char* target, const long sequence_length);
 long perfect_match (const char* source, char* target, const long sequence_length);
 void dump_fasta (const char* source, const long sequence_length, FILE* output, bool newln = true);
 
-const long * resolve_char (unsigned char);
+const long * resolve_char (unsigned char, bool = false, bool = true);
+const double resolution_count (unsigned char, bool = false);
+const char unmap_char (unsigned char, bool = false);
 
 extern StringBuffer names,
        sequences;
@@ -47,5 +49,6 @@ extern Vector       nameLengths,
        nodeParents;
 
 extern VectorDouble distanceEstimates;
+
 
 #endif
