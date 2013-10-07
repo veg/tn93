@@ -692,9 +692,15 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
 
   //---------------------------------------------------------------
 
-void dump_fasta (const char* mapped_characters, const long firstSequenceLength, FILE *output, bool newln) {
-  for (long c = 0; c < firstSequenceLength; c++) {
-    fputc( ValidChars[mapped_characters[c]], output);
+void dump_fasta (const char* mapped_characters, const long firstSequenceLength, FILE *output, bool newln, bool is_prot, unsigned long from, unsigned long to) {
+  if (from > 0 || to > 0) {
+    for (long c = from; c <= to; c++) {
+      fputc( is_prot ? ValidCharsAA[mapped_characters[c]] : ValidChars[mapped_characters[c]], output);    
+    }
+  } else {
+    for (long c = 0; c < firstSequenceLength; c++) {
+      fputc( is_prot ? ValidCharsAA[mapped_characters[c]] : ValidChars[mapped_characters[c]], output);
+    }
   }
   if (newln) {
     fprintf (output, "\n"); 
@@ -703,15 +709,14 @@ void dump_fasta (const char* mapped_characters, const long firstSequenceLength, 
 
   //---------------------------------------------------------------
 
-void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d) {
+void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d, bool is_prot, unsigned long from, unsigned long to) {
   if (d) {
     fprintf (output, ">%s [%g, %g]\n", stringText (names, nameLengths, index), d[0], d[1]);
   } else {
     fprintf (output, ">%s\n", stringText (names, nameLengths, index));
   }
   
-  char *s1 = stringText (sequences, seqLengths, index);
-  dump_fasta (s1, firstSequenceLength, output);
+  dump_fasta (stringText (sequences, seqLengths, index), firstSequenceLength, output, true, is_prot, from, to);
 }
 
 

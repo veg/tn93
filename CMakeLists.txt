@@ -32,10 +32,11 @@ add_executable(
 )
 
 add_executable(
-    read_reducer
+    readreduce
     src/read_reducer.cpp
     src/stringBuffer.cc
     src/tn93_shared.cc
+    src/argparse_merge.cpp
 )
 
 add_executable(
@@ -52,6 +53,14 @@ add_executable(
     src/tn93_shared.cc
 )
 
+add_executable(
+    selectreads
+    src/trim_reads.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+    src/argparse_trim.cpp
+)
+
 set(DEFAULT_COMPILE_FLAGS "-O3")
 set(DEFAULT_LINK_FLAGS "${DEFAULT_COMPILE_FLAGS}")
 
@@ -60,6 +69,12 @@ find_package(OpenMP)
 if (${OPENMP_FOUND})
 	set_target_properties(
 		tn93
+		PROPERTIES
+		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
+		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
+	)
+	set_target_properties(
+		selectreads
 		PROPERTIES
 		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
 		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
@@ -77,7 +92,7 @@ if (${OPENMP_FOUND})
 		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
     )
 	set_target_properties(
-		read_reducer
+		readreduce
 		PROPERTIES
 		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
 		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
@@ -86,6 +101,12 @@ endif (${OPENMP_FOUND})
 
 install(
     TARGETS tn93
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
+install(
+    TARGETS selectreads
 	RUNTIME DESTINATION bin
 	OPTIONAL
 )
