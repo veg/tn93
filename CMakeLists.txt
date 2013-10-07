@@ -117,6 +117,12 @@ install(
 	OPTIONAL
 )
 
+install(
+    TARGETS readreduce
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
 add_custom_target(TN93 
 	DEPENDS tn93
 )
