@@ -126,7 +126,7 @@ void handle_a_sequence (StringBuffer& current_sequence, StringBuffer& current_cl
     
         #ifdef _OPENMP
           #if _OPENMP >= 200805 
-            #pragma omp parallel shared(current_clusters, sequence_lengths, cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)            
+            #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster, sequence_lengths, current_sequence, current_clusters)
           #else 
             #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster)
           #endif 
