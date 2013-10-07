@@ -27,7 +27,7 @@ void init_genrand(unsigned long s);
 unsigned long genrand_int32(void);
 double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long* randomize, long min_overlap, unsigned long* = NULL, double = 0.0, unsigned long cnt = 0, long count1 = 1, long count2 = 1);
 long stringLength (Vector& lengths, unsigned long index);
-char* stringText (StringBuffer& strings, Vector& lengths, unsigned long index);
+char* stringText (const StringBuffer& strings, const Vector& lengths, unsigned long index);
 void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firstSequenceLength, StringBuffer& names, Vector& nameLengths);
 int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne = false,  Vector* sequenceInstances = NULL, char sep = ':');
 void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d = NULL, bool = false, unsigned long from = 0L, unsigned long to = 0L);

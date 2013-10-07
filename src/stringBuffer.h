@@ -15,7 +15,7 @@ public:
     StringBuffer 			(void);
     ~StringBuffer			(void);
 
-    char*					getString		(void) {
+    char*					getString		(void) const {
         return sData;
     }
     void					appendChar		(const char);
@@ -88,10 +88,10 @@ public:
     void					storeVector		(const Vector&, const unsigned long);
     void					sort			(void);
     void                    swap            (Vector&);
-    long					value			(const long idx) {
+    long					value			(const long idx) const {
         return vData[idx];
     }
-    unsigned long			length			(void) {
+    unsigned long			length			(void) const {
         return vLength;
     }
 

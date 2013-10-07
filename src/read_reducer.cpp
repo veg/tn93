@@ -57,7 +57,16 @@ void merge_current_clusters (StringBuffer& current_clusters, Vector& sequence_le
             char * cluster1 = stringText(current_clusters, sequence_lengths, cluster_id);
             long try_cluster = -1;
             
-            #pragma omp parallel for default(none) shared(cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)
+            #ifdef _OPENMP
+              
+            #if _OPENMP >= 200805 
+              #pragma omp parallel shared(current_clusters, sequence_lengths, cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)            
+            #else 
+              #pragma omp parallel shared(cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)
+            #endif 
+            #endif
+            {
+                #pragma omp for schedule (dynamic)
                 for (long cluster_id2 = 0; cluster_id2 < cluster_id; cluster_id2 ++) {
                     #pragma omp flush (try_cluster)
                     if (try_cluster < 0 && cluster_merge.value(cluster_id2) >= 0) {
@@ -75,6 +84,7 @@ void merge_current_clusters (StringBuffer& current_clusters, Vector& sequence_le
                         }   
                     }
                 }
+              }
        }
     
     } while (did_some_merges);
@@ -114,9 +124,14 @@ void handle_a_sequence (StringBuffer& current_sequence, StringBuffer& current_cl
     unsigned long currently_defined_clusters = sequence_lengths.length()-1;
     long try_cluster = -1;
     
-    
-    #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster)
-        for (unsigned long cluster_index = 0; cluster_index < currently_defined_clusters; cluster_index ++) {
+        #ifdef _OPENMP
+          #if _OPENMP >= 200805 
+            #pragma omp parallel shared(current_clusters, sequence_lengths, cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)            
+          #else 
+            #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster)
+          #endif 
+        #endif
+        for (long cluster_index = 0; cluster_index < currently_defined_clusters; cluster_index ++) {
             #pragma omp flush (try_cluster)
             if (try_cluster < 0) {
                 if (perfect_match (current_sequence.getString(), stringText(current_clusters, sequence_lengths, cluster_index), firstSequenceLength) >= min_overlap) {
