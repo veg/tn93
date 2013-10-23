@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include "stringBuffer.h"
 
+using namespace std;
+
 #define  RESOLVE_A      0x01
 #define  RESOLVE_C      0x02
 #define  RESOLVE_G      0x04
@@ -29,7 +31,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
 long stringLength (Vector& lengths, unsigned long index);
 char* stringText (const StringBuffer& strings, const Vector& lengths, unsigned long index);
 void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firstSequenceLength, StringBuffer& names, Vector& nameLengths);
-int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne = false,  Vector* sequenceInstances = NULL, char sep = ':');
+int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne = false,  Vector* sequenceInstances = NULL, char sep = ':', string prefix = "");
 void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d = NULL, bool = false, unsigned long from = 0L, unsigned long to = 0L);
 void initAlphabets(bool = false);
 void merge_two_sequences (const char* source, char* target, const long sequence_length);
