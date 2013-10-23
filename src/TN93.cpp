@@ -5,21 +5,14 @@
   #include "omp.h"
 #endif
 
+#include "argparse.hpp"
+
 
 using namespace std;
+using namespace argparse;
 
 #define HISTOGRAM_BINS 200
 #define HISTOGRAM_SLICE ((double)HISTOGRAM_BINS)
-
-static char Usage[] = "TN93dist"
-                      "\n\t<FASTA file OR - for stdin >"
-                      "\n\t<[output file OR - for stdout> OR COUNT>"
-                      "\n\t<distance threshold>"
-                      "\n\t<how to handle ambiguities; one of RESOLVE, AVERAGE, SKIP, GAPMM>"
-                      "\n\t<output format; one of CSV, CSVN (numeric IDs instead of sequence names) HYPHY>"
-                      "\n\t<minimum overlap between sequences: integer >= 1>"
-                      "\n\t[BOOTSTRAP 0 or 1]"
-                      "\n\t[SECOND FILE]";
 
 
 
@@ -28,74 +21,17 @@ static char Usage[] = "TN93dist"
 
 int main (int argc, const char * argv[])
 {
-    if (argc != 7 && argc != 8 && argc != 9)
-    {
-        cerr << "Usage is `" << Usage << "'." << endl;
-        exit(1);
-    }
+    args_t args = args_t (argc, argv);
 
-    const    char *S = argv[1];
-    long     firstSequenceLength = 0,
-             min_overlap = 1;
+    long     firstSequenceLength = 0;
 
-    double   distanceThreshold = atof (argv[3]);
-    bool	 count_only 	   = strcmp ("COUNT", argv[2]) == 0;
-
-
-
-    if (distanceThreshold < 0.0 || distanceThreshold > 1.0)
-    {
-        cerr << "Genetic distance threshold must be in [0,1]" << endl;
-        return 1;
-    }
-
-    /*if (distanceThreshold > 0.)
-    	min_overlap = 1./distanceThreshold;*/
-
-    min_overlap = atoi (argv[6]);
-    if (min_overlap < 1) {
-        cerr << "Minimum overlap must be a positive integer" << endl;
-        return 1;
-    }
-
-
-    FILE *F  = strcmp (S,"-") == 0 ? stdin: fopen(S, "r"),
-          *FO = count_only ? NULL : (strcmp (argv[2],"-") == 0? stdout: fopen (argv[2], "w")),
-           *F2 = argc == 9 ? fopen (argv[8], "r"): NULL;
-
-    if (F == NULL)
-    {
-        cerr << "Cannot open file `" << S << "'." << endl;
-        return 1;
-    }
-
-    if (FO == NULL && !count_only)
-    {
-        cerr << "Cannot open file `" << FO << "'." << endl;
-        return 1;
-    }
-
-    if (F2 == NULL && argc == 9) {
-        cerr << "Cannot open file `" << argv[8] << "'." << endl;
-        return 1;
-
-    }
-
-    char resolutionOption = RESOLVE;
-
-    if (strcmp (argv[4], "GAPMM") == 0) {
-        resolutionOption = GAPMM;
-    } else if (strcmp (argv[4], "AVERAGE") == 0) {
-        resolutionOption = AVERAGE;
-    } else if (strcmp (argv[4], "SKIP") == 0) {
-        resolutionOption = SKIP;
-    }
 
     StringBuffer names,
                  sequences;
 
     Vector       nameLengths,
-                 seqLengths;
+                 seqLengths,
+                 counts;
 
 
 
@@ -107,48 +43,43 @@ int main (int argc, const char * argv[])
     nameLengths.appendValue (0);
     seqLengths.appendValue (0);
     initAlphabets();
-    if (readFASTA (F, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength) == 1)
+    if (readFASTA (args.input1, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, false, &counts, args.counts_in_name) == 1)
         return 1;
 
-    fclose(F);
 
     unsigned long seqLengthInFile1 = seqLengths.length()-1,
                   seqLengthInFile2 = 0;
 
-    if (F2) {
-        if (readFASTA (F2, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength) == 1)
+    if (args.input2) {
+        automatonState = 0;
+        if (readFASTA (args.input2, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, false, &counts, args.counts_in_name) == 1)
             return 1;
         seqLengthInFile2 = seqLengths.length()-1-seqLengthInFile1;
-        fclose (F2);
     }
 
     unsigned long sequenceCount = seqLengths.length()-1,
-                  pairwise      = argc == 9? seqLengthInFile2*seqLengthInFile1 : (sequenceCount-1) * (sequenceCount) / 2;
+                  pairwise      = args.input2 ? seqLengthInFile2*seqLengthInFile1 : (sequenceCount-1) * (sequenceCount) / 2;
 
-    if (argc < 9)
-        cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
-    else
-        cerr << "Read " << seqLengthInFile1 << " sequences from file 1 and " << seqLengthInFile2 << " sequences from file 2 of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
+    if (! args.quiet )
+      if (args.input2 == NULL)
+          cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
+      else
+          cerr << "Read " << seqLengthInFile1 << " sequences from file 1 and " << seqLengthInFile2 << " sequences from file 2 of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
 
     double percentDone = 0.,
            max         = 0.0,
            mean        = 0.0;
 
 
-    unsigned char    doCSV = 1;
-
-    if (strcmp (argv[5], "HYPHY") == 0)
-        doCSV = 0;
-    else if (strcmp (argv[5], "CSVN") == 0)
-        doCSV = 2;
 
 
     long * randFlag = NULL;
     long * randSeqs = NULL;
 
-    if (argc >= 8 && atoi (argv[7]) > 0) {
-        if (argc == 8) {
-            cerr << endl << "Randomizing site order..." << endl;
+    if (args.do_bootstrap) {
+        if (args.input2 == NULL) {
+            if (! args.quiet )
+              cerr << endl << "Randomizing site order..." << endl;
             randFlag = new long [firstSequenceLength];
             bool   *included = new bool [firstSequenceLength];
             for (long k = 0; k < firstSequenceLength; k++) {
@@ -156,13 +87,14 @@ int main (int argc, const char * argv[])
             }
             init_genrand (time(NULL) + getpid ());
 
-            unsigned long normalizer = RAND_RANGE / firstSequenceLength,
-                          max_site   = 0;
+            long normalizer = RAND_RANGE / firstSequenceLength,
+                 max_site   = 0;
 
 
-            for (unsigned long i = 0; i < firstSequenceLength; i++) {
+            for (long i = 0; i < firstSequenceLength; i++) {
                 randFlag[i] = genrand_int32 () / normalizer;
-                cerr << randFlag[i] << " ";
+                if (! args.quiet)
+                  cerr << randFlag[i] << " ";
                 included[randFlag[i]] = true;
                 if (randFlag[i] > max_site) max_site = randFlag[i];
             }
@@ -173,47 +105,43 @@ int main (int argc, const char * argv[])
             }
 
             delete [] included;
-            cerr << endl << "Unique sites included in the resampled order " << total_resampled << endl;
+            if (! args.quiet )
+              cerr << endl << "Unique sites included in the resampled order " << total_resampled << endl;
         } else {
-            if (argc == 9) {
-                randSeqs = new long [sequenceCount];
+              randSeqs = new long [sequenceCount];
+              for (unsigned long k = 0; k < sequenceCount; k++) {
+                  randSeqs [k] = k;
+              }
 
-                for (unsigned long k = 0; k < sequenceCount; k++) {
-                    randSeqs [k] = k;
-                }
-
-                init_genrand (time(NULL) + getpid ());
+              init_genrand (time(NULL) + getpid ());
 
 
-                for (unsigned long i = 0; i < sequenceCount; i++) {
-                    long id = genrand_int32 () / (RAND_RANGE / (sequenceCount-i)),
-                         t = randSeqs[i+id];
-                    randSeqs[i+id]= randSeqs[i];
-                    randSeqs[i] = t;
-                }
-
-
-
+              for (unsigned long i = 0; i < sequenceCount; i++) {
+                  long id = genrand_int32 () / (RAND_RANGE / (sequenceCount-i)),
+                       t = randSeqs[i+id];
+                  randSeqs[i+id]= randSeqs[i];
+                  randSeqs[i] = t;
+              }
+              if (! args.quiet )
                 cerr << endl << "Randomized sequence assignment to datasets " << endl;
-            }
         }
     }
 
 
-
-    cerr << endl << "Progress: " << setw(8) << 0.0 << "% (" << setw(8) << 0 << " links found)";
+    if (! args.quiet )
+      cerr << endl << "Progress: ";
 
     long pairIndex  = 0,
          foundLinks = 0;
 
     double *distanceMatrix = NULL;
 
-    if (doCSV) {
-        if (!count_only) {
-            if (doCSV > 1)
-                fprintf (FO, "ID1,ID2,Distance\n");
+    if (args.format != hyphy) {
+        if (args.do_count == false) {
+            if (args.format == csv)
+                fprintf (args.output, "ID1,ID2,Distance\n");
             else
-                fprintf (FO, "Seq1,Seq2,Distance\n");
+                fprintf (args.output, "Seq1,Seq2,Distance\n");
         }
     }
     else {
@@ -224,7 +152,7 @@ int main (int argc, const char * argv[])
             distanceMatrix[i*sequenceCount+i] = 0.;
     }
 
-    long upperBound = argc == 9 ? seqLengthInFile1 : sequenceCount,
+    long upperBound = args.input2 ? seqLengthInFile1 : sequenceCount,
          skipped_comparisons = 0;
          
     
@@ -232,9 +160,29 @@ int main (int argc, const char * argv[])
     for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
       global_hist[k] = 0;
     }
-    
+  
+    int resolutionOption;
+  switch (args.ambig) {
+    case resolve:
+      resolutionOption = RESOLVE;
+      break;
+    case average:
+      resolutionOption = AVERAGE;
+      break;
+    case skip:
+      resolutionOption = SKIP;
+      break;
+    case gapmm:
+      resolutionOption = GAPMM;
+      break;
+      
+  }
+  
+  time_t before, after;
+  time (&before); 
+  double weighted_counts = 0.;
 
-    #pragma omp parallel shared(count_only, skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,distanceThreshold, nameLengths, names, pairwise, percentDone,FO,cerr,max,randFlag,doCSV,distanceMatrix, upperBound, argc, seqLengthInFile1, seqLengthInFile2, min_overlap, mean, randSeqs)
+    #pragma omp parallel shared(skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs, weighted_counts)
     
     {
     
@@ -251,30 +199,33 @@ int main (int argc, const char * argv[])
           char *n1 = stringText (names, nameLengths, mapped_id),
                 *s1 = stringText(sequences, seqLengths, mapped_id);
 
-          long lowerBound = argc == 9 ? seqLengthInFile1 : seq1 +1,
+          long lowerBound = args.input2 ? seqLengthInFile1 : seq1 +1,
                compsSkipped      = 0,
-               local_links_found = 0;
+               local_links_found = 0,
+               instances1 = counts.value (mapped_id);
 
           double local_max = 0.,
-                 local_sum = 0.;
+                 local_sum = 0.,
+                 local_weighted = 0.;
 
           for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
           {
-              long mapped_id2 = randSeqs?randSeqs[seq2]:seq2;
-              double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, min_overlap, histogram_counts, HISTOGRAM_SLICE, HISTOGRAM_BINS);
+              long mapped_id2 = randSeqs?randSeqs[seq2]:seq2,
+                   instances2 = counts.value (mapped_id2);
+                   
+              double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, histogram_counts, HISTOGRAM_SLICE, HISTOGRAM_BINS, instances1, instances2);
 
-              if (thisD >= -1e-10 && thisD <= distanceThreshold)
-              {
+              if (thisD >= -1.e-10 && thisD <= args.distance) {
                   local_links_found ++;
                   //char *s2 = stringText(sequences, seqLengths, seq1);
-                  if (!count_only) {
-                      if (doCSV == 1) {
+                  if (!args.do_count) {
+                      if (args.format == csv) {
                           #pragma omp critical
-                          fprintf (FO,"%s,%s,%g\n", n1, stringText (names, nameLengths, mapped_id2), thisD);
+                          fprintf (args.output,"%s,%s,%g\n", n1, stringText (names, nameLengths, mapped_id2), thisD);
                       } else {
-                          if (doCSV == 2) {
+                          if (args.format == csvn) {
                               #pragma omp critical
-                              fprintf (FO,"%ld,%ld,%g\n", mapped_id, mapped_id2, thisD);
+                              fprintf (args.output,"%ld,%ld,%g\n", mapped_id, mapped_id2, thisD);
 
                           } else {
                               distanceMatrix[mapped_id*sequenceCount+mapped_id2] = thisD;
@@ -287,7 +238,9 @@ int main (int argc, const char * argv[])
                   compsSkipped ++;
               }
               else {
-                  local_sum += thisD;
+                  long weighted_count = instances1*instances2;
+                  local_sum += thisD * (weighted_count);
+                  local_weighted += weighted_count;
                   if (thisD > local_max) {
                       local_max = thisD;
                   }
@@ -302,16 +255,24 @@ int main (int argc, const char * argv[])
               if (local_max > max) {
                   max = local_max;
               }
-              pairIndex += (argc < 9) ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
+              pairIndex += args.input2 == NULL ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
               mean += local_sum;
+              weighted_counts += local_weighted;
           }
+           
 
-          if (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1)
+          if (! args.quiet && (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1))
           {
               #pragma omp critical
+              {
+              time (&after);
               percentDone = pairIndex * 100. / pairwise;
-              #pragma omp critical
-              cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b" << setw(8) << percentDone << "% (" << setw(8) << foundLinks << " links found)";
+              cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:" 
+                   << setw (8) << percentDone << "% (" << setw(8) << foundLinks << " links found, "
+                   << setw (12) << std::setprecision(3) << pairIndex/difftime (after,before) << " evals/sec)";
+              
+              after = before;
+              }
           }
       }
       #pragma omp critical
@@ -323,19 +284,19 @@ int main (int argc, const char * argv[])
       
     }
 
-    if (!count_only && !doCSV)
+    if (args.do_count == false && args.format == hyphy)
     {
-        fprintf (FO, "{");
+        fprintf (args.output, "{");
         for (unsigned long seq1 = 0; seq1 < sequenceCount; seq1 ++)
         {
-            fprintf (FO, "\n{%g", distanceMatrix[seq1*sequenceCount]);
+            fprintf (args.output, "\n{%g", distanceMatrix[seq1*sequenceCount]);
             for (unsigned long seq2 = 1; seq2 < sequenceCount; seq2++)
             {
-                fprintf (FO, ",%g", distanceMatrix[seq1*sequenceCount+seq2]);
+                fprintf (args.output, ",%g", distanceMatrix[seq1*sequenceCount+seq2]);
             }
-            fprintf (FO, "}");
+            fprintf (args.output, "}");
         }
-        fprintf (FO, "\n}");
+        fprintf (args.output, "\n}");
 
         delete [] distanceMatrix;
     }
@@ -344,16 +305,16 @@ int main (int argc, const char * argv[])
     
     ostream * outStream = &cout;
     
-    if (FO == stdout) {
+    if (args.output == stdout) {
       outStream = &cerr;
     }
     
-    (*outStream) << "{" << endl << '\t' << "'Actual comparisons performed' :" << pairwise-skipped_comparisons << ',' << endl;
-    (*outStream) << "\t'Total comparisons possible' : " << pairwise << ',' << endl;
-    (*outStream) << "\t'Links found' : " << foundLinks << ',' << endl;
-    (*outStream) << "\t'Maximum distance' : " << max << ',' << endl;
-    (*outStream) << "\t'Mean distance' : " << mean/(pairwise-skipped_comparisons) << ',' << endl;
-    (*outStream) << "\t'Histogram' : [";
+    (*outStream) << "{" << endl << '\t' << "\"Actual comparisons performed\" :" << pairwise-skipped_comparisons << ',' << endl;
+    (*outStream) << "\t\"Total comparisons possible\" : " << pairwise << ',' << endl;
+    (*outStream) << "\t\"Links found\" : " << foundLinks << ',' << endl;
+    (*outStream) << "\t\"Maximum distance\" : " << max << ',' << endl;
+    (*outStream) << "\t\"Mean distance\" : " << mean/weighted_counts << ',' << endl;
+    (*outStream) << "\t\"Histogram\" : [";
     for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
       if (k) {
         (*outStream) << ',';
@@ -364,8 +325,8 @@ int main (int argc, const char * argv[])
     
     (*outStream) << '}' << endl;
     
-    if (count_only) {
-        cout << "Found " << foundLinks << " links among " << pairwise-skipped_comparisons << " pairwise comparisons" << endl;
+    if (args.do_count) {
+        fprintf (args.output, "Found %ld links among %ld pairwise comparisons\n", foundLinks, pairwise-skipped_comparisons);
     }
 
     if (randFlag)
@@ -374,8 +335,6 @@ int main (int argc, const char * argv[])
     if (randSeqs)
         delete [] randSeqs;
 
-    if (FO)
-        fclose (FO);
     return 0;
 
 }
