@@ -61,6 +61,13 @@ add_executable(
     src/argparse_trim.cpp
 )
 
+add_executable(
+    validate_fasta
+    src/validate_fasta.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+)
+
 set(DEFAULT_COMPILE_FLAGS "-O3")
 set(DEFAULT_LINK_FLAGS "${DEFAULT_COMPILE_FLAGS}")
 
