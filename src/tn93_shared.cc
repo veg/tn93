@@ -585,7 +585,10 @@ void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firs
 
   //---------------------------------------------------------------
 
-int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne, Vector* sequenceInstances, char sep) {
+int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, 
+               StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, 
+               long& firstSequenceLength, bool oneByOne, 
+               Vector* sequenceInstances, char sep) {
   
   if (oneByOne) {
     sequences.resetString();
@@ -646,7 +649,7 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer
           automatonState = 2;
         }
         else {
-          names.appendChar (currentC);
+          names.appendChar(currentC);
         }
         break;
       }

@@ -14,7 +14,7 @@ using namespace argparse;
 #define HISTOGRAM_BINS 200
 #define HISTOGRAM_SLICE ((double)HISTOGRAM_BINS)
 
-
+char sep = ':';
 
 //---------------------------------------------------------------
 

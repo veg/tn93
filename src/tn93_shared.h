@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include "stringBuffer.h"
 
+using namespace std;
+
 #define  RESOLVE_A      0x01
 #define  RESOLVE_C      0x02
 #define  RESOLVE_G      0x04
