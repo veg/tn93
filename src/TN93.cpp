@@ -14,7 +14,6 @@ using namespace argparse;
 #define HISTOGRAM_BINS 200
 #define HISTOGRAM_SLICE ((double)HISTOGRAM_BINS)
 
-const string prefix = "ref_";
 char sep = ':';
 
 //---------------------------------------------------------------
@@ -53,7 +52,7 @@ int main (int argc, const char * argv[])
 
     if (args.input2) {
         automatonState = 0;
-        if (readFASTA (args.input2, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, false, &counts, args.counts_in_name, prefix) == 1)
+        if (readFASTA (args.input2, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, false, &counts, args.counts_in_name) == 1)
             return 1;
         seqLengthInFile2 = seqLengths.length()-1-seqLengthInFile1;
     }

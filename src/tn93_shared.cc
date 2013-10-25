@@ -588,7 +588,7 @@ void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firs
 int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, 
                StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, 
                long& firstSequenceLength, bool oneByOne, 
-               Vector* sequenceInstances, char sep, string prefix) {
+               Vector* sequenceInstances, char sep) {
   
   if (oneByOne) {
     sequences.resetString();
@@ -616,14 +616,7 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
             
           } else {
             nameLengths.appendValue (names.length());
-
-            if(prefix.size()) {
-              this_name_l = stringLength (nameLengths, nameLengths.length()-2) - prefix.size();
-            }
-            else {
-              this_name_l = stringLength (nameLengths, nameLengths.length()-2);
-            }
-
+            this_name_l = stringLength (nameLengths, nameLengths.length()-2);
           }
           
           if (this_name_l <= 0) {
@@ -656,11 +649,6 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
           automatonState = 2;
         }
         else {
-          // if we are at a terminating character, we are at the 
-          // beginning of a new name, add ref
-          if(nameLengths.value(nameLengths.length()-1) == names.length() && prefix.size()) {
-              names.appendBuffer(prefix.c_str());
-          }
           names.appendChar(currentC);
         }
         break;
