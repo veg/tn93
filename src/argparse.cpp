@@ -47,10 +47,14 @@ namespace argparse
   "                           hyphy: {{d11,d12,..,d1n}...{dn1,dn2,...,dnn}}, where distances above THRESHOLD are set to 100;\n"
   "  -l OVERLAP               only process pairs of sequences that overlap over at least OVERLAP nucleotides (an integer >0, default=" TO_STR( DEFAULT_OVERLAP ) "):\n"
   "  -d COUNTS_IN_NAME        if sequence name is of the form 'somethingCOUNTS_IN_NAMEinteger' then treat the integer as a copy number\n"
-  "                           when computing distance histograms (a character, default=" TO_STR( COUNTS_IN_NAME ) "):\n"
+  "                           when computing distance histograms (a character, default=" TO_STR( DEFAULT_COUNTS_IN_NAME ) "):\n"
   "  -s SECOND_FASTA          if specified, read another FASTA file from SECOND_FASTA and perform pairwise comparison BETWEEN the files (default=NULL)\n"
   "  -b                       bootstrap alignment columns before computing distances (default = false)\n"
+  "                           when -s is supplied, permutes the assigment of sequences to files\n"
   "  -c                       only count the pairs below a threshold, do not write out all the pairs \n"
+  "  -m                       compute inter- and intra-population means suitable for FST caclulations\n"
+  "                           only applied when -s is used to provide a second file"
+  "  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = " TO_STR ( DEFAULT_INCLUDE_PROB) ")\n"
   "  -q                       do not report progress updates and other diagnostics to stderr \n"
   "  FASTA                    read sequences to compare from this file (default=stdin)\n";
   
@@ -93,6 +97,8 @@ namespace argparse
   do_bootstrap( false ),
   do_count( false ),
   quiet( false ),
+  do_fst( false ),
+  include_prob( DEFAULT_INCLUDE_PROB ),
   counts_in_name ( DEFAULT_COUNTS_IN_NAME )
   {
       // skip arg[0], it's just the program name
@@ -113,9 +119,11 @@ namespace argparse
         else if (  arg[1] == 'a')  parse_ambig( next_arg (i, argc, argv) );
         else if (  arg[1] == 's')  parse_second_in( next_arg (i, argc, argv) );
         else if (  arg[1] == 'd')  parse_counts_in_name( next_arg (i, argc, argv) );
+        else if (  arg[1] == 'u')  parse_include_prob( next_arg (i, argc, argv) );
         else if (  arg[1] == 'b')  parse_bootstrap();
         else if (  arg[1] == 'c')  parse_count();
         else if (  arg[1] == 'q')  parse_quiet();
+        else if (  arg[1] == 'm')  parse_fst();
         else
           ERROR( "unknown argument: %s", arg );
       }
@@ -185,7 +193,15 @@ namespace argparse
     if ( distance < 0.0 || distance > 1.0)
       ERROR( "genetic distance threshold must be in [0,1], had: %s", str );
   }
-  
+
+  void args_t::parse_include_prob ( const char * str )
+  {
+    include_prob = atof( str );
+    
+    if ( include_prob < 0.0 || include_prob > 1.0)
+      ERROR( "sequence inclusion probability must be in [0,1], had: %s", str );
+  }
+
   void args_t::parse_counts_in_name ( const char * str )
   {
     counts_in_name = str[0];
@@ -243,5 +259,10 @@ namespace argparse
   void args_t::parse_quiet()
   {
     quiet = true;
-  }  
+  }
+
+  void args_t::parse_fst()
+  {
+    do_fst = true;
+  }
 }

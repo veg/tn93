@@ -11,6 +11,7 @@
 #define DEFAULT_DISTANCE          0.015
 #define DEFAULT_COUNTS_IN_NAME    ':'
 #define DEFAULT_OVERLAP           100
+#define DEFAULT_INCLUDE_PROB      1.0
 
 
 namespace argparse
@@ -44,8 +45,10 @@ namespace argparse
         bool            do_bootstrap;
         bool            do_count;
         bool            quiet;
+        bool            do_fst;
         char            counts_in_name;
-        
+        double          include_prob;
+      
         args_t( int, const char ** );
         ~args_t();
         
@@ -57,10 +60,13 @@ namespace argparse
         void parse_overlap  ( const char * );
         void parse_format   ( const char * );
         void parse_ambig    ( const char * );
-        void parse_counts_in_name   ( const char * );
+        void parse_include_prob   ( const char * );
+        void parse_counts_in_name
+                            ( const char * );
         void parse_bootstrap( void );
-        void parse_count( void );
-        void parse_quiet ( void );
+        void parse_count    ( void );
+        void parse_quiet    ( void );
+        void parse_fst      ( void );
       
     };
 }
