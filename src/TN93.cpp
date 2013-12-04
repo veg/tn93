@@ -358,7 +358,7 @@ int main (int argc, const char * argv[])
     }
     
     (*outStream) << "{" << endl << '\t' << "\"Actual comparisons performed\" :" << pairwise-skipped_comparisons << ',' << endl;
-    (*outStream) << "{" << endl << '\t' << "\"Comparisons accounting for copy numbers \" :" << (weighted_counts[0] + weighted_counts[1] + weighted_counts[2]) << ',' << endl;
+    (*outStream) << "\t\"Comparisons accounting for copy numbers \" :" << (weighted_counts[0] + weighted_counts[1] + weighted_counts[2]) << ',' << endl;
     (*outStream) << "\t\"Total comparisons possible\" : " << pairwise << ',' << endl;
     (*outStream) << "\t\"Links found\" : " << foundLinks << ',' << endl;
     (*outStream) << "\t\"Maximum distance\" : " << max[0] << ',' << endl;
