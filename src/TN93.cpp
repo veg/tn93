@@ -376,6 +376,7 @@ int main (int argc, const char * argv[])
       
       for (unsigned long k = 0; k < 3; k++) {
         dump_histogram (outStream, keys[k], &(global_hist[k][0]));
+        (*outStream) << ',' << endl;
       }
       for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
         global_hist[0][k] += global_hist[1][k] + global_hist[2][k];
