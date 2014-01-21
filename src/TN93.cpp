@@ -244,8 +244,8 @@ int main (int argc, const char * argv[])
           for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
           {
               long mapped_id2 = randSeqs?randSeqs[seq2]:seq2,
-                   instances2 = counts.value (mapped_id2),
-                   which_bin  = 0;
+                   which_bin  = 0,
+                   weighted_count= instances1 * counts.value (mapped_id2);
             
               if (do_fst) {
                 if (seq1 < seqLengthInFile1) {
@@ -257,10 +257,10 @@ int main (int argc, const char * argv[])
                 }
               }
             
-              double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, &(histogram_counts[which_bin][0]), HISTOGRAM_SLICE, HISTOGRAM_BINS, instances1, instances2);
+              double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, &(histogram_counts[which_bin][0]), HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count);
 
               if (thisD >= -1.e-10 && thisD <= args.distance) {
-                  local_links_found ++;
+                  local_links_found += weighted_count;
                   //char *s2 = stringText(sequences, seqLengths, seq1);
                   if (!args.do_count) {
                       if (args.format == csv) {
@@ -279,10 +279,9 @@ int main (int argc, const char * argv[])
                   }
               }
               if (thisD <= -0.5) {
-                  compsSkipped ++;
+                  compsSkipped += weighted_count;
               }
               else {
-                  long weighted_count = instances1*instances2;
                   local_sum[which_bin] += thisD * (weighted_count);
                   local_weighted[which_bin] += weighted_count;
                   if (thisD > local_max[which_bin]) {
