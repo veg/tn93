@@ -52,16 +52,20 @@ ARGUMENTS
                                average: average ambiguities (e.g.R-A is 0.5 A-A and 0.5 G-A);
                                skip: do not include sites with ambiguous nucleotides in distance calculations;
                                gapmm: a gap ('-') matched to anything other than another gap is like matching an N (4-fold ambig) to it;
+                               a string (e.g. RY): any ambiguity in the list is RESOLVED; any ambiguitiy NOT in the list is averaged (LIST-NOT LIST will also be averaged);
       -f FORMAT                controls the format of the output unless -c is set (default=csv)
                                csv: seqname1, seqname2, distance;
                                csvn: 1, 2, distance;
                                hyphy: {{d11,d12,..,d1n}...{dn1,dn2,...,dnn}}, where distances above THRESHOLD are set to 100;
       -l OVERLAP               only process pairs of sequences that overlap over at least OVERLAP nucleotides (an integer >0, default=100):
       -d COUNTS_IN_NAME        if sequence name is of the form 'somethingCOUNTS_IN_NAMEinteger' then treat the integer as a copy number
-                               when computing distance histograms (a character, default=COUNTS_IN_NAME):
+                               when computing distance histograms (a character, default=':'):
       -s SECOND_FASTA          if specified, read another FASTA file from SECOND_FASTA and perform pairwise comparison BETWEEN the files (default=NULL)
       -b                       bootstrap alignment columns before computing distances (default = false)
+                               when -s is supplied, permutes the assigment of sequences to files
       -c                       only count the pairs below a threshold, do not write out all the pairs 
+      -m                       compute inter- and intra-population means suitable for FST caclulations
+                               only applied when -s is used to provide a second file  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = 1.0)
       -q                       do not report progress updates and other diagnostics to stderr 
       FASTA                    read sequences to compare from this file (default=stdin)
 
