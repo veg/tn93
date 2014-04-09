@@ -27,7 +27,8 @@ namespace argparse
       resolve,
       average,
       skip,
-      gapmm
+      gapmm,
+      subset
     };
 
   class args_t
@@ -48,6 +49,7 @@ namespace argparse
         bool            do_fst;
         char            counts_in_name;
         double          include_prob;
+        char            *ambigs_to_resolve;
       
         args_t( int, const char ** );
         ~args_t();

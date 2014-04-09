@@ -28,15 +28,13 @@ nodeParents;
 
 VectorDouble distanceEstimates;
 
-const  char ValidChars[]    = "ACGTURYSWKMBDHVN?-",
-            ValidCharsAA[]  = "ACDEFGHIKLMNPQRSTVWYBZX?-";
+const  char ValidChars[]       = "ACGTURYSWKMBDHVN?-",
+            ValidCharsAA[]     = "ACDEFGHIKLMNPQRSTVWYBZX?-";
+            
+unsigned char   * resolveTheseAmbigs = (unsigned char   *)calloc (256,sizeof (unsigned char));
                   
 static char empty        [] = "";
 
-#define RESOLVE 0
-#define AVERAGE 1
-#define SKIP    2
-#define GAPMM   3
 
 const long   resolutions [][4] = { {1,0,0,0},
   {0,1,0,0},
@@ -175,7 +173,7 @@ char validFlags [256];
 
   //---------------------------------------------------------------
 
-void initAlphabets (bool doAminoAcid) {
+void initAlphabets (bool doAminoAcid, char * resolutionSubset) {
   for (int i = 0; i < 256; i++)
     validFlags [i] = -1;
   
@@ -187,6 +185,16 @@ void initAlphabets (bool doAminoAcid) {
   } else {  
      for (unsigned int i = 0; i < strlen (ValidChars); i++)
       validFlags [(unsigned char)ValidChars[i]] = i;
+      
+    if (resolutionSubset) {
+      unsigned long subset_length = strlen (resolutionSubset);
+      for (unsigned long rc = 0; rc < subset_length; rc++) {
+        unsigned char rcc = toupper( (resolutionSubset[rc]));
+        if (validFlags[rcc] > 3) {
+          resolveTheseAmbigs[validFlags[rcc]] = 1;
+        }
+      }
+    }
   }
   
 }
@@ -369,8 +377,8 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
   nucF[4],
   pairwiseCounts [4][4];
   
-  for (long i = 0; i < 4; i++)
-    for (long j = 0; j < 4; j++)
+  for (unsigned long i = 0; i < 4UL; i++)
+    for (unsigned long j = 0; j < 4UL; j++)
       pairwiseCounts[i][j] = 0.;
   
   
@@ -409,7 +417,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
       else {
         if (matchMode != SKIP) {
           if (resolutionsCount[c2] > 0.) {
-            if (matchMode == RESOLVE)
+            if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c2])
               if (resolutions[c2][c1]) {
                 pairwiseCounts[c1][c1] += 1.;
                 continue;
@@ -427,20 +435,16 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
         }
       }
     }
-    else
-        {
-      if (matchMode != SKIP)
-          {
-        if (c2 < 4)
-            {
-          if (resolutionsCount[c1] > 0.)
-              {
-            if (matchMode == RESOLVE)
-              if (resolutions[c1][c2])
-                  {
+    else {
+      if (matchMode != SKIP) {
+        if (c2 < 4) {
+          if (resolutionsCount[c1] > 0.) {
+            if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c1]) {
+              if (resolutions[c1][c2]) {
                 pairwiseCounts[c2][c2] += 1.;
                 continue;
-                  }
+              }
+            }
             
             if (resolutions[c1][0])
               pairwiseCounts[0][c2] += resolutionsCount[c1];
@@ -450,47 +454,58 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
               pairwiseCounts[2][c2] += resolutionsCount[c1];
             if (resolutions[c1][3])
               pairwiseCounts[3][c2] += resolutionsCount[c1];
-              }
-            }
-        else // ambig and ambig
-            {
+          }
+       } else {
+            // ambig and ambig
           double norm = resolutionsCount[c1] * resolutionsCount[c2];
             //cout << int(c1) << ":" << int(c2) << "/" << norm << endl;
-          if (norm > 0.0)
-              {
-            if (matchMode == RESOLVE)
-                {
-              
+          if (norm > 0.0) {
+            if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c1] && resolveTheseAmbigs[c2]) {
+              long matched_count = 0L,
+                   positive_match [4] = {0,0,0,0};
+              for (long i = 0; i < 4L; i ++) {
+                if (resolutions[c1][i] && resolutions[c2][i]) {
+                  matched_count ++;
+                  positive_match[i] = 1;
                 }
+              }
+              
+              if (matched_count > 0L) {
+                double norm2 = 1./matched_count;
+                
+                for (long i = 0; i < 4L; i ++) {
+                  if (positive_match[i]) {
+                    pairwiseCounts[i][i] += norm2;
+                  }
+                }
+                continue;
+              }
+            }
             
-            for (long i = 0; i < 4; i ++)
-                {
-              if (resolutions[c1][i])
-                  {
-                for (long j = 0; j < 4; j ++)
-                    {
-                  if (resolutions [c2][j])
-                      {
+            for (long i = 0; i < 4L; i ++) {
+              if (resolutions[c1][i]) {
+                for (long j = 0; j < 4L; j ++) {
+                  if (resolutions [c2][j]) {
                     pairwiseCounts[i][j] += norm;
-                      }
-                    }
                   }
                 }
               }
             }
           }
         }
+      }
+    }
   }
   
   
-  for (unsigned long c1 = 0; c1 < 4; c1++)
-    for (unsigned long c2 = 0; c2 < 4; c2++)
-        {
+  for (unsigned long c1 = 0; c1 < 4; c1++) {
+    for (unsigned long c2 = 0; c2 < 4; c2++) {
       double pc = pairwiseCounts[c1][c2];
       totalNonGap   += pc;
       nucFreq [c1]  += pc;
       nucFreq [c2]  += pc;
-        }
+    }
+  }
   
   if (totalNonGap <= min_overlap) {
     return -1.;

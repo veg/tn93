@@ -62,7 +62,8 @@ int main (int argc, const char * argv[])
 
     nameLengths.appendValue (0);
     seqLengths.appendValue (0);
-    initAlphabets();
+    
+    initAlphabets(false, args.ambigs_to_resolve);
     if (readFASTA (args.input1, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, false, &counts, args.counts_in_name, args.include_prob) == 1)
         return 1;
 
@@ -199,6 +200,9 @@ int main (int argc, const char * argv[])
       break;
     case gapmm:
       resolutionOption = GAPMM;
+      break;
+    case subset:
+      resolutionOption = SUBSET;
       break;
       
   }

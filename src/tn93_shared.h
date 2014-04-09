@@ -22,6 +22,7 @@ using namespace std;
 #define  AVERAGE        1
 #define  SKIP           2
 #define  GAPMM          3
+#define  SUBSET         4
 
 #define RAND_RANGE 0xffffffffUL /* Maximum value returned by genrand_int32 */
 
@@ -33,7 +34,7 @@ char* stringText (const StringBuffer& strings, const Vector& lengths, unsigned l
 void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firstSequenceLength, StringBuffer& names, Vector& nameLengths);
 int readFASTA (FILE* F, char& automatonState,  StringBuffer &names, StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, long& firstSequenceLength, bool oneByOne = false,  Vector* sequenceInstances = NULL, char sep = ':', double include_prob = 1.0);
 void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d = NULL, bool = false, unsigned long from = 0L, unsigned long to = 0L);
-void initAlphabets(bool = false);
+void initAlphabets(bool = false, char * = NULL);
 void merge_two_sequences (const char* source, char* target, const long sequence_length);
 long perfect_match (const char* source, char* target, const long sequence_length);
 void dump_fasta (const char* source, const long sequence_length, FILE* output, bool newln = true, bool = false, unsigned long from = 0L, unsigned long to = 0L);
@@ -44,6 +45,8 @@ const char unmap_char (unsigned char, bool = false);
 
 extern StringBuffer names,
        sequences;
+
+extern unsigned char * resolveTheseAmbigs;
 
 extern Vector       nameLengths,
        seqLengths,

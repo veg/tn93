@@ -20,8 +20,7 @@ static char Usage[] = "ShortestPathTN93"
 
 double    computeTransformedTN93 (const unsigned long seq1, const unsigned long seq2, const long firstSequenceLength, const char resolutionOption, const long min_overlap, const double step_penalty, double *ds = NULL) {
 
-    char *n1 = stringText (names, nameLengths, seq1),
-          *s1 = stringText (sequences, seqLengths, seq1);
+    char *s1 = stringText (sequences, seqLengths, seq1);
 
     double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, NULL, min_overlap),
            d = thisD < 0.?1.e100:exp(thisD*step_penalty)-1.;

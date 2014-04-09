@@ -41,6 +41,7 @@ namespace argparse
   "                           average: average ambiguities (e.g.R-A is 0.5 A-A and 0.5 G-A);\n"
   "                           skip: do not include sites with ambiguous nucleotides in distance calculations;\n"
   "                           gapmm: a gap ('-') matched to anything other than another gap is like matching an N (4-fold ambig) to it;\n"
+  "                           a string (e.g. RY): any ambiguity in the list is RESOLVED; any ambiguitiy NOT in the list is averaged (LIST-NOT LIST will also be averaged);\n"
   "  -f FORMAT                controls the format of the output unless -c is set (default=" TO_STR( DEFAULT_FORMAT ) ")\n"
   "                           csv: seqname1, seqname2, distance;\n"
   "                           csvn: 1, 2, distance;\n"
@@ -98,8 +99,9 @@ namespace argparse
   do_count( false ),
   quiet( false ),
   do_fst( false ),
+  counts_in_name ( DEFAULT_COUNTS_IN_NAME ),
   include_prob( DEFAULT_INCLUDE_PROB ),
-  counts_in_name ( DEFAULT_COUNTS_IN_NAME )
+  ambigs_to_resolve(NULL)
   {
       // skip arg[0], it's just the program name
     for (int i = 1; i < argc; ++i ) {
@@ -229,7 +231,9 @@ namespace argparse
     } else if (!strcmp (str, "gapmm")) {
       ambig = gapmm;
     } else {
-      ERROR( "invalid ambiguity handling mode: %s", str );
+      ambig = subset;
+      ambigs_to_resolve = new char [strlen (str) + 1];
+      strcpy (ambigs_to_resolve, str);
     }
   }
   
