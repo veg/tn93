@@ -38,7 +38,7 @@ namespace argparse
   "                           skip: do not include sites with ambiguous nucleotides in distance calculations;\n"
   "                           gapmm: a gap ('-') matched to anything other than another gap is like matching an N (4-fold ambig) to it;\n"
   "  -l OVERLAP               merge reads that match over at least this many positions (an integer >0, default=" TO_STR( DEFAULT_OVERLAP ) "):\n"
-  "  -s SIZE                  merge reads that match over at least this many positions (an integer >0, default=" TO_STR( DEFAULT_SIZE ) "):\n"
+  "  -s SIZE                  mimimum cluster size to report in output (an integer >0, default=" TO_STR( DEFAULT_SIZE ) "):\n"
   "  -d COUNTS_IN_NAME        if sequence name is of the form 'somethingCOUNTS_IN_NAMEinteger' then treat the integer as a copy number\n"
   "                           when counting reads; also output cluster sizes using the same separator (a character, default=" TO_STR( DEFAULT_COUNTS_IN_NAME ) "):\n"
   "  -j                       report the results to a JSON file (instead of a FASTA MSA) \n"

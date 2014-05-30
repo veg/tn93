@@ -616,7 +616,7 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
   
   if (include_prob < 1.) {
     up_to = RAND_RANGE * include_prob;
-  }
+  } 
   
   bool include_me = true;
   

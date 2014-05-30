@@ -54,7 +54,7 @@ namespace argparse
   "                           when -s is supplied, permutes the assigment of sequences to files\n"
   "  -c                       only count the pairs below a threshold, do not write out all the pairs \n"
   "  -m                       compute inter- and intra-population means suitable for FST caclulations\n"
-  "                           only applied when -s is used to provide a second file"
+  "                           only applied when -s is used to provide a second file\n"
   "  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = " TO_STR ( DEFAULT_INCLUDE_PROB) ")\n"
   "  -q                       do not report progress updates and other diagnostics to stderr \n"
   "  FASTA                    read sequences to compare from this file (default=stdin)\n";
