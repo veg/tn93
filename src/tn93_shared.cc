@@ -517,7 +517,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
     return -1.;
   }
   
-  if ((matchMode == RESOLVE || matchMode == SUBSET) && resolve_fraction < 1. && totalNonGap * resolve_fraction >= ambig_count) {
+  if ((matchMode == RESOLVE || matchMode == SUBSET) && resolve_fraction < 1. && totalNonGap * resolve_fraction <= ambig_count) {
     //cout << ambig_count << "/" << totalNonGap << endl;
     return computeTN93 (s1, s2,  L, AVERAGE , randomize, min_overlap,
                        histogram, slice, hist_size, count1, count2);
