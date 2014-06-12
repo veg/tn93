@@ -8,6 +8,7 @@
 #define PROGNAME                 "tn93"
 #define DEFAULT_AMBIG             resolve
 #define DEFAULT_FORMAT            csv
+#define DEFAULT_FRACTION          1.0
 #define DEFAULT_DISTANCE          0.015
 #define DEFAULT_COUNTS_IN_NAME    ':'
 #define DEFAULT_OVERLAP           100
@@ -50,6 +51,7 @@ namespace argparse
         char            counts_in_name;
         double          include_prob;
         char            *ambigs_to_resolve;
+        double          resolve_fraction;
       
         args_t( int, const char ** );
         ~args_t();
@@ -69,6 +71,7 @@ namespace argparse
         void parse_count    ( void );
         void parse_quiet    ( void );
         void parse_fst      ( void );
+        void parse_fraction ( const char *);
       
     };
 }

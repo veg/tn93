@@ -48,6 +48,8 @@ extern StringBuffer names,
 
 extern unsigned char * resolveTheseAmbigs;
 
+extern double   resolve_fraction;
+
 extern Vector       nameLengths,
        seqLengths,
        workingNodes,

@@ -20,7 +20,8 @@ namespace argparse
   "[-o OUTPUT] "
   "[-t THRESHOLD] "
   "[-a AMBIGS] "
-  "[-l OVERLAP]"
+  "[-g FRACTION] "
+  "[-l OVERLAP] "
   "[-d COUNTS_IN_NAME] "
   "[-f FORMAT] "
   "[-s SECOND_FASTA] "
@@ -42,6 +43,10 @@ namespace argparse
   "                           skip: do not include sites with ambiguous nucleotides in distance calculations;\n"
   "                           gapmm: a gap ('-') matched to anything other than another gap is like matching an N (4-fold ambig) to it;\n"
   "                           a string (e.g. RY): any ambiguity in the list is RESOLVED; any ambiguitiy NOT in the list is averaged (LIST-NOT LIST will also be averaged);\n"
+  "  -g FRACTION              in combination with AMBIGS, works to limit (for resolve and string options to AMBIG)\n"
+  "                           the maximum tolerated FRACTION of ambiguous characters; sequences whose pairwise comparisons\n"
+  "                           include no more than FRACTION [0,1] of sites with resolvable ambiguities will be resolved\n"
+  "                           while all others will be AVERAGED (default = " TO_STR ( DEFAULT_FRACTION ) ")\n"
   "  -f FORMAT                controls the format of the output unless -c is set (default=" TO_STR( DEFAULT_FORMAT ) ")\n"
   "                           csv: seqname1, seqname2, distance;\n"
   "                           csvn: 1, 2, distance;\n"
@@ -101,7 +106,8 @@ namespace argparse
   do_fst( false ),
   counts_in_name ( DEFAULT_COUNTS_IN_NAME ),
   include_prob( DEFAULT_INCLUDE_PROB ),
-  ambigs_to_resolve(NULL)
+  ambigs_to_resolve(NULL),
+  resolve_fraction(DEFAULT_FRACTION)
   {
       // skip arg[0], it's just the program name
     for (int i = 1; i < argc; ++i ) {
@@ -126,6 +132,7 @@ namespace argparse
         else if (  arg[1] == 'c')  parse_count();
         else if (  arg[1] == 'q')  parse_quiet();
         else if (  arg[1] == 'm')  parse_fst();
+        else if (  arg[1] == 'g')  parse_fraction( next_arg (i, argc, argv) );
         else
           ERROR( "unknown argument: %s", arg );
       }
@@ -196,6 +203,14 @@ namespace argparse
       ERROR( "genetic distance threshold must be in [0,1], had: %s", str );
   }
 
+  void args_t::parse_fraction ( const char * str )
+  {
+    resolve_fraction = atof( str );
+    
+    if ( resolve_fraction < 0.0 || resolve_fraction > 1.0)
+      ERROR( "resolve ambigous fraction must be in [0,1], had: %s", str );
+  }
+
   void args_t::parse_include_prob ( const char * str )
   {
     include_prob = atof( str );
@@ -203,6 +218,7 @@ namespace argparse
     if ( include_prob < 0.0 || include_prob > 1.0)
       ERROR( "sequence inclusion probability must be in [0,1], had: %s", str );
   }
+
 
   void args_t::parse_counts_in_name ( const char * str )
   {

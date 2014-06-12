@@ -32,6 +32,8 @@ const  char ValidChars[]       = "ACGTURYSWKMBDHVN?-",
             ValidCharsAA[]     = "ACDEFGHIKLMNPQRSTVWYBZX?-";
             
 unsigned char   * resolveTheseAmbigs = (unsigned char   *)calloc (256,sizeof (unsigned char));
+
+double          resolve_fraction = 1.;
                   
 static char empty        [] = "";
 
@@ -360,6 +362,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
                        unsigned long* histogram, double slice, unsigned long hist_size, long count1, long count2) {
   
   char useK2P   = 0;
+  unsigned long ambig_count = 0UL;
   long aux1;
   
   double auxd,
@@ -419,6 +422,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
           if (resolutionsCount[c2] > 0.) {
             if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c2])
               if (resolutions[c2][c1]) {
+                ambig_count ++;
                 pairwiseCounts[c1][c1] += 1.;
                 continue;
               }
@@ -441,6 +445,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
           if (resolutionsCount[c1] > 0.) {
             if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c1]) {
               if (resolutions[c1][c2]) {
+                ambig_count ++;
                 pairwiseCounts[c2][c2] += 1.;
                 continue;
               }
@@ -461,6 +466,7 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
             //cout << int(c1) << ":" << int(c2) << "/" << norm << endl;
           if (norm > 0.0) {
             if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c1] && resolveTheseAmbigs[c2]) {
+              ambig_count ++;
               long matched_count = 0L,
                    positive_match [4] = {0,0,0,0};
               for (long i = 0; i < 4L; i ++) {
@@ -509,6 +515,12 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
   
   if (totalNonGap <= min_overlap) {
     return -1.;
+  }
+  
+  if ((matchMode == RESOLVE || matchMode == SUBSET) && resolve_fraction < 1. && totalNonGap * resolve_fraction >= ambig_count) {
+    //cout << ambig_count << "/" << totalNonGap << endl;
+    return computeTN93 (s1, s2,  L, AVERAGE , randomize, min_overlap,
+                       histogram, slice, hist_size, count1, count2);
   }
   
   totalNonGap = 2./(nucFreq[0] + nucFreq[1] + nucFreq[2] + nucFreq[3]);

@@ -93,6 +93,8 @@ int main (int argc, const char * argv[])
         }
       }
     }
+    
+    resolve_fraction = args.resolve_fraction;
   
     double percentDone    = 0.,
            max[3]         = {0.0,0.0,0.0},
