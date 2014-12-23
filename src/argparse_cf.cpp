@@ -25,7 +25,7 @@ namespace argparse
   "[FASTA]\n";
   
   const char help_msg[] =
-  "compute Tamura Nei 93 distances between aligned sequences\n"
+  "compute per-position coverage from an MSA and report it as a JSON\n"
   "\n"
   "optional arguments:\n"
   "  -h, --help               show this help message and exit\n"

@@ -88,9 +88,10 @@ int main (int argc, const char * argv[]) {
     copy_count.appendValue(0);
 
  
-    long sequences_read = 0,
-         firstSequenceLength = 0,
-         dim = (args.data == dna) ? 4: 20;
+    long sequences_read = 0L,
+         sequence_copies = 0L,
+         firstSequenceLength = 0L,
+         dim = (args.data == dna) ? 4L: 20L;
           
     while (fasta_result == 2) {
         
@@ -108,15 +109,20 @@ int main (int argc, const char * argv[]) {
         else
           handle_a_sequence (sequences, freq_counts, firstSequenceLength, copy_count.value(0), args.ambig == ignore);
         sequences_read ++;
-        if (args.quiet == false && sequences_read % 1000 == 0) {
+        sequence_copies += copy_count.value(0);
+        /*if (args.quiet == false && sequences_read % 1000 == 0) {
             cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b" << setw(8) << sequences_read << " reads";
-        }
+        }*/
 
     }
-    
+  
     if (args.quiet == false) {
-      cerr << endl;
+      cerr << endl << "{\"unique\" : " << sequences_read << " , \"total\" : " << sequence_copies << "}" << endl;
     }
+    
+    /*if (args.quiet == false) {
+      cerr << endl;
+    }*/
     
     exportJSON (args.output, firstSequenceLength, dim, freq_counts, args.data == protein);
     if (freq_counts) delete [] freq_counts;
