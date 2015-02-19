@@ -320,9 +320,8 @@ long stringLength (Vector& lengths, unsigned long index)
 
 char* stringText (const StringBuffer& strings, const Vector& lengths, unsigned long index)
 {
-  if (index < lengths.length() - 1)
-    return strings.getString() + lengths.value(index);
-  
+  if (index < lengths.length() - 1L) 
+    return strings.getString() + lengths.value(index);  
   return empty;
 }
 

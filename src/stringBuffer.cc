@@ -90,7 +90,7 @@ void StringBuffer::appendBuffer (const char *buffer, const long length)
 
 /*---------------------------------------------------------------------------------------------------- */
 
-void StringBuffer::resetString (void)
+void StringBuffer::resetString (void) 
 {
     sLength        = 0;
     sData[sLength] = 0;
@@ -102,7 +102,7 @@ Vector::Vector (void)
 {
     vLength  = 0;
     vaLength = Vector::vDefaultLength;
-    vData = (long*)malloc (sizeof(long)*vaLength);
+    vData = (long*)calloc (vaLength, sizeof(long));
 }
 
 
@@ -237,7 +237,7 @@ VectorDouble::VectorDouble (void)
 {
     vLength  = 0;
     vaLength = Vector::vDefaultLength;
-    vData = (double*)malloc (sizeof(double)*vaLength);
+    vData = (double*)calloc (vaLength,sizeof(double));
 }
 
 /*---------------------------------------------------------------------------------------------------- */

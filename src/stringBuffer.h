@@ -22,7 +22,7 @@ public:
     void					appendBuffer	(const char*, const long = -1);
     void					resetString		(void);
     void                    swap            (StringBuffer&);
-    unsigned long			length			(void) {
+    unsigned long			length			(void) const {
         return sLength;
     }
     char          getChar      (const long i) const {return sData[i];}
@@ -54,7 +54,7 @@ public:
     double					value			(const long idx) {
         return vData[idx];
     }
-    unsigned long			length			(void) {
+    unsigned long			length			(void) const {
         return vLength;
     }
 

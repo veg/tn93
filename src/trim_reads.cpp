@@ -77,6 +77,7 @@ int main (int argc, const char * argv[]) {
               }
         }
         
+        //printf ("%ld | %ld (%ld) \n", args.start_coord, args.end_coord, firstSequenceLength);
   
         handle_a_sequence (args.output, names, sequences, args.start_coord, args.end_coord, args.coverage, args.ambig, args.data == protein);
         
