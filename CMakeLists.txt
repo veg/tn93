@@ -69,7 +69,7 @@ add_executable(
 )
 
 #set(DEFAULT_COMPILE_FLAGS "-O3 -march=native -g -mveclibabi=svml -mstringop-strategy=vector_loop -Wa,-q")
-set(DEFAULT_COMPILE_FLAGS "-O3 -g")
+set(DEFAULT_COMPILE_FLAGS "-O3")
 set(DEFAULT_LINK_FLAGS "${DEFAULT_COMPILE_FLAGS}")
 
 find_package(OpenMP)
