@@ -28,7 +28,7 @@ using namespace std;
 
 void init_genrand(unsigned long s);
 unsigned long genrand_int32(void);
-double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long* randomize, long min_overlap, unsigned long* = NULL, double = 0.0, unsigned long cnt = 0, long count1 = 1, long count2 = 1);
+double		computeTN93 (const char * s1, const char *s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap, unsigned long* = NULL, const double = 0.0, const unsigned long cnt = 0, const long count1 = 1, const long count2 = 1);
 long stringLength (Vector& lengths, unsigned long index);
 char* stringText (const StringBuffer& strings, const Vector& lengths, unsigned long index);
 void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firstSequenceLength, StringBuffer& names, Vector& nameLengths);

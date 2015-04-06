@@ -117,9 +117,9 @@ const long   resolutions_AA [][20] = { {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 
 };
 
-#define N_CHAR 15
-#define GAP    17
-#define GAP_AA 24
+#define N_CHAR 15UL
+#define GAP    17UL
+#define GAP_AA 24UL
 
 const  double   resolutionsCount[] = { 1.f,
   1.f,
@@ -355,17 +355,18 @@ long perfect_match (const char* source, char* target, const long sequence_length
   return matched_bases;
 }
 
+
 /*---------------------------------------------------------------------------------------------------- */
 
-double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long* randomize, long min_overlap,
-                       unsigned long* histogram, double slice, unsigned long hist_size, long count1, long count2) {
+double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap,
+                       unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2) {
   
   char useK2P   = 0;
   unsigned long ambig_count = 0UL;
   long aux1;
   
   double auxd,
-  nucFreq[4]		= {0,0,0,0},
+  nucFreq[4]		= {0.,0.,0.,0.},
   fY,
   fR,
   K1,
@@ -383,121 +384,59 @@ double		computeTN93 (char * s1, char *s2,  unsigned long L, char matchMode, long
     for (unsigned long j = 0; j < 4UL; j++)
       pairwiseCounts[i][j] = 0.;
   
-  
-  for (unsigned long p = 0; p < L; p++) {
-    unsigned char c1, c2;
-    
-    if (randomize == NULL) {
-      c1 = s1[p];
-      c2 = s2[p];
-    } else {
-      long pi = randomize[p];
-      c1 = s1[pi];
-      c2 = s2[pi];
-    }
-    
-    if (c1 == GAP || c2 == GAP) {
-      if (matchMode != GAPMM) {
-        continue;
-      } else {
-        if (c1 == GAP && c2 == GAP)
-          continue;
-        else {
-          if (c1 == GAP) {
-            c1 = N_CHAR;
-          } else {
-            c2 = N_CHAR;
-          }
-        } 
-      } 
-    }
-    
-    if (c1 < 4) {
-      if (c2 < 4) {
+  if (randomize == NULL) {
+    for (unsigned long p = 0; p < L; p++) {
+      unsigned long c1 = s1[p], c2 = s2[p];
+      
+      if (c1 < 4UL && c2 < 4UL) {
         pairwiseCounts [c1][c2] += 1.;
-      }
-      else {
-        if (matchMode != SKIP) {
-          if (resolutionsCount[c2] > 0.) {
-            if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c2])
-              if (resolutions[c2][c1]) {
-                ambig_count ++;
-                pairwiseCounts[c1][c1] += 1.;
-                continue;
+      } else { // not both resolved
+        if (c1 == GAP || c2 == GAP) {
+          if (matchMode != GAPMM) {
+            continue;
+          } else {
+            if (c1 == GAP && c2 == GAP)
+              continue;
+            else {
+              if (c1 == GAP) {
+                c1 = N_CHAR;
+              } else {
+                c2 = N_CHAR;
               }
-            
-            if (resolutions[c2][0])
-              pairwiseCounts[c1][0] += resolutionsCount[c2];
-            if (resolutions[c2][1])
-              pairwiseCounts[c1][1] += resolutionsCount[c2];
-            if (resolutions[c2][2])
-              pairwiseCounts[c1][2] += resolutionsCount[c2];
-            if (resolutions[c2][3])
-              pairwiseCounts[c1][3] += resolutionsCount[c2];
+            }
           }
         }
+        
+#include "tn93_function_reuse.cc"
       }
     }
-    else {
-      if (matchMode != SKIP) {
-        if (c2 < 4) {
-          if (resolutionsCount[c1] > 0.) {
-            if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c1]) {
-              if (resolutions[c1][c2]) {
-                ambig_count ++;
-                pairwiseCounts[c2][c2] += 1.;
-                continue;
-              }
-            }
-            
-            if (resolutions[c1][0])
-              pairwiseCounts[0][c2] += resolutionsCount[c1];
-            if (resolutions[c1][1])
-              pairwiseCounts[1][c2] += resolutionsCount[c1];
-            if (resolutions[c1][2])
-              pairwiseCounts[2][c2] += resolutionsCount[c1];
-            if (resolutions[c1][3])
-              pairwiseCounts[3][c2] += resolutionsCount[c1];
-          }
-       } else {
-            // ambig and ambig
-          double norm = resolutionsCount[c1] * resolutionsCount[c2];
-            //cout << int(c1) << ":" << int(c2) << "/" << norm << endl;
-          if (norm > 0.0) {
-            if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c1] && resolveTheseAmbigs[c2]) {
-              ambig_count ++;
-              long matched_count = 0L,
-                   positive_match [4] = {0,0,0,0};
-              for (long i = 0; i < 4L; i ++) {
-                if (resolutions[c1][i] && resolutions[c2][i]) {
-                  matched_count ++;
-                  positive_match[i] = 1;
-                }
-              }
-              
-              if (matched_count > 0L) {
-                double norm2 = 1./matched_count;
-                
-                for (long i = 0; i < 4L; i ++) {
-                  if (positive_match[i]) {
-                    pairwiseCounts[i][i] += norm2;
-                  }
-                }
-                continue;
-              }
-            }
-            
-            for (long i = 0; i < 4L; i ++) {
-              if (resolutions[c1][i]) {
-                for (long j = 0; j < 4L; j ++) {
-                  if (resolutions [c2][j]) {
-                    pairwiseCounts[i][j] += norm;
-                  }
-                }
+    
+  } else {
+    
+    for (unsigned long p = 0; p < L; p++) {
+      long pi = randomize[p];
+      unsigned long c1 = s1[pi], c2 = s2[pi];
+      
+      if (c1 < 4UL && c2 < 4UL) {
+        pairwiseCounts [c1][c2] += 1.;
+      } else { // not both resolved
+        if (c1 == GAP || c2 == GAP) {
+          if (matchMode != GAPMM) {
+            continue;
+          } else {
+            if (c1 == GAP && c2 == GAP)
+              continue;
+            else {
+              if (c1 == GAP) {
+                c1 = N_CHAR;
+              } else {
+                c2 = N_CHAR;
               }
             }
           }
         }
+        
+#include "tn93_function_reuse.cc"
       }
     }
   }
