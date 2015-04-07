@@ -25,6 +25,11 @@ public:
     unsigned long			length			(void) const {
         return sLength;
     }
+    void              reset_length (unsigned long newL) {
+      if (newL < sLength) {
+        sLength = newL;
+      }
+    }
     char          getChar      (const long i) const {return sData[i];}
 
 
