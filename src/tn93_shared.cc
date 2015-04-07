@@ -620,7 +620,7 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
     histogram[index] += count1 * count2;
   }
   
-  return dist;
+  return dist <= 0. ? 0. : dist; // this is to avoid returning -0
 }
 
 
