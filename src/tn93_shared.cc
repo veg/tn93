@@ -355,11 +355,55 @@ long perfect_match (const char* source, char* target, const long sequence_length
   return matched_bases;
 }
 
+  //---------------------------------------------------------------
+
+struct sequence_gap_structure describe_sequence (const char* source, const unsigned long sequence_length, const unsigned long char_count) {
+  sequence_gap_structure result;
+  
+  unsigned long start_run = sequence_length + 1UL,
+                end_run = 0L;
+  
+  for (unsigned long char_idx = 0UL; char_idx < sequence_length; char_idx++) {
+    unsigned long this_char = source[char_idx];
+    if (this_char != GAP) {
+      if (char_idx < result.first_nongap) {
+        result.first_nongap = char_idx;
+      }
+      if (char_idx > result.last_nongap) {
+        result.last_nongap = char_idx;
+      }
+      
+    }
+    if (this_char < char_count) { // not an ambig
+      if (char_idx < start_run) {
+        end_run = start_run = char_idx;
+      } else {
+        end_run = char_idx;
+      }
+    } else { // an ambig
+      if (end_run >= start_run) {
+        if (end_run - start_run > result.resolved_end - result.resolved_start) {
+          result.resolved_start = start_run;
+          result.resolved_end = end_run;
+        }
+      }
+      start_run = sequence_length + 1UL;
+      end_run = 0L;
+    }
+  }
+  if (end_run >= start_run) {
+    if (end_run - start_run > result.resolved_end - result.resolved_start) {
+      result.resolved_start = start_run;
+      result.resolved_end = end_run;
+    }
+  }
+  return result;
+}
 
 /*---------------------------------------------------------------------------------------------------- */
 
 double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap,
-                       unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2) {
+                       unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2, const sequence_gap_structure * sequence_descriptor1, const sequence_gap_structure * sequence_descriptor2) {
   
   char useK2P   = 0;
   unsigned long ambig_count = 0UL;
@@ -385,6 +429,65 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
       pairwiseCounts[i][j] = 0.;
   
   if (randomize == NULL) {
+    
+    if (sequence_descriptor1 && sequence_descriptor2 && matchMode != GAPMM) {
+      
+      unsigned long first_nongap = MAX  (sequence_descriptor1->first_nongap,   sequence_descriptor2->first_nongap),
+                    last_nongap  = MIN  (sequence_descriptor1->last_nongap,    sequence_descriptor2->last_nongap),
+                    span_start   = MAX  (sequence_descriptor1->resolved_start, sequence_descriptor2->resolved_start),
+                    span_end     = MIN  (sequence_descriptor1->resolved_end,    sequence_descriptor2->resolved_end);
+      
+      //cout << first_nongap << " " << last_nongap << " " << span_start << " " << span_end << endl;
+      
+      
+      if (span_start > span_end) {
+        for (unsigned long p = first_nongap; p <= last_nongap; p++) {
+          unsigned long c1 = s1[p], c2 = s2[p];
+          
+          if (c1 < 4UL && c2 < 4UL) {
+            pairwiseCounts [c1][c2] += 1.;
+          } else { // not both resolved
+            if (c1 == GAP || c2 == GAP) {
+              continue;
+            }
+#include "tn93_function_reuse.cc"
+          }
+        }
+      }
+      else {
+        
+        for (unsigned long p = first_nongap; p < span_start; p++) {
+          unsigned long c1 = s1[p], c2 = s2[p];
+          
+          if (c1 < 4UL && c2 < 4UL) {
+            pairwiseCounts [c1][c2] += 1.;
+          } else { // not both resolved
+            if (c1 == GAP || c2 == GAP) {
+              continue;
+            }
+  #include "tn93_function_reuse.cc"
+          }
+        }
+        
+        for (unsigned long p = span_start; p <= span_end ; p++) {
+            pairwiseCounts [s1[p]][s2[p]] += 1.;
+        }
+       
+        for (unsigned long p = span_end + 1UL; p <= last_nongap; p++) {
+          unsigned long c1 = s1[p], c2 = s2[p];
+          
+          if (c1 < 4UL && c2 < 4UL) {
+            pairwiseCounts [c1][c2] += 1.;
+          } else { // not both resolved
+            if (c1 == GAP || c2 == GAP) {
+              continue;
+            }
+  #include "tn93_function_reuse.cc"
+          }
+        }
+      }
+    } else {
+    
     for (unsigned long p = 0; p < L; p++) {
       unsigned long c1 = s1[p], c2 = s2[p];
       
@@ -410,7 +513,7 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
 #include "tn93_function_reuse.cc"
       }
     }
-    
+    }
   } else {
     
     for (unsigned long p = 0; p < L; p++) {
@@ -579,7 +682,7 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
       case 0: {
         if (currentC == '>' || currentC == '#') {
           automatonState = 1;
-          if (include_prob < 1.) {
+          if (sequenceInstances == NULL && include_prob < 1.) {
             include_me = genrand_int32() < up_to;
           }
         }
@@ -588,45 +691,74 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
       case 1: {
         if (currentC == '\n' || currentC == '\r') {
           if (include_me) {
-            names.appendChar   ('\0');
+              names.appendChar   ('\0');
+ 
             long this_name_l;
             if (oneByOne) {
-              this_name_l = names.length ()-1;        
+              this_name_l = names.length ()-1;
               
             } else {
               nameLengths.appendValue (names.length());
               this_name_l = stringLength (nameLengths, nameLengths.length()-2);
             }
+
             
             if (this_name_l <= 0) {
               cerr << "Sequence names must be non-empty." << endl;
               return 1;
             }
-            
+            automatonState = 2;
+
             if (sequenceInstances) {
-              unsigned long count = 1L;
-              if (this_name_l >= 3) {
-                long sep_loc = 0, ll = names.length();
-                for (sep_loc = 2; sep_loc < this_name_l; sep_loc ++) {
-                  if (names.getChar(ll-sep_loc-1) == sep) {
-                    break;
+                unsigned long count = 1L;
+               if (this_name_l >= 3) {
+                  long sep_loc = 0, ll = names.length();
+                  for (sep_loc = 2; sep_loc < this_name_l; sep_loc ++) {
+                    if (names.getChar(ll-sep_loc-1) == sep) {
+                      break;
+                    }
                   }
+                  if (sep_loc < this_name_l) {
+                    count = atoi (names.getString() + (ll-sep_loc));
+                  }
+                  if (count < 1) {
+                    count = 1;
+                  }
+                  
+                  unsigned long resampled_prob = 0UL;
+                  
+                  if (include_prob < 1.) {
+                    for (long k = 0; k < count; k ++) {
+                      resampled_prob += genrand_int32() < up_to;
+                    }
+                  } else {
+                    resampled_prob = count;
+                  }
+                 
+                 //cerr << count << " -> " << resampled_prob << endl;
+                 
+                  if (resampled_prob == 0UL) {
+                    if (oneByOne) {
+                      names.resetString();
+                    } else {
+                      names.reset_length (nameLengths.value (nameLengths.length()-2));
+                    }
+                    nameLengths.remove(nameLengths.length()-1);
+                    include_me = false;
+                    continue;
+                  } else {
+                    count = resampled_prob;
+                  }
+                  
                 }
-                if (sep_loc < this_name_l) {
-                  count = atoi (names.getString() + (ll-sep_loc));
+                if (oneByOne) {
+                  sequenceInstances->resetVector();
                 }
-                if (count < 1) {
-                  count = 1;
-                }
+                sequenceInstances->appendValue(count);
               }
-              if (oneByOne) {
-                sequenceInstances->resetVector();
-              }
-              sequenceInstances->appendValue(count);
-            }
-          }
+           }
           
-          automatonState = 2;
+            
         }
         else {
           if (include_me) {
@@ -658,9 +790,12 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
               }
               addASequenceToList (sequences, seqLengths, firstSequenceLength, names, nameLengths);
             }
-            if (include_prob < 1.) {
+            if (sequenceInstances == NULL && include_prob < 1.) {
               include_me = genrand_int32() < up_to;
+            } else {
+              include_me = true;
             }
+              
           }
         }
         break;
