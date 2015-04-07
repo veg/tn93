@@ -37,6 +37,24 @@ void dump_histogram (ostream* outStream, const char* tag, unsigned long * hist) 
 //---------------------------------------------------------------
 
 
+int compare_ul (const void* v1,const void* v2) {
+    const unsigned long *ul1 = (const unsigned long*)v1,
+                        *ul2 = (const unsigned long*)v2;
+  
+    if (*ul1 < *ul2) {
+      return -1;
+    }
+    if (*ul1 > *ul2) {
+      return 1;
+    }
+    return 0;
+}
+
+
+
+//---------------------------------------------------------------
+
+
 int main (int argc, const char * argv[])
 {
     args_t args = args_t (argc, argv);
@@ -49,9 +67,12 @@ int main (int argc, const char * argv[])
 
     Vector       nameLengths,
                  seqLengths,
-                 counts;
+                 counts,
+                 randomized_idx,
+                 recounts;
+  
 
-
+    bool         randomized_fst = false;
 
     char automatonState = 0;
     // 0 - between sequences
@@ -93,7 +114,10 @@ int main (int argc, const char * argv[])
         }
       }
     }
-    
+  
+   sequence_gap_structure * sequence_descriptors = NULL;
+  
+  
     resolve_fraction = args.resolve_fraction;
   
     double percentDone    = 0.,
@@ -102,6 +126,8 @@ int main (int argc, const char * argv[])
 
     long * randFlag = NULL;
     long * randSeqs = NULL;
+  
+  
 
     if (args.do_bootstrap) {
         if (args.input2 == NULL) {
@@ -113,6 +139,8 @@ int main (int argc, const char * argv[])
                 included[k] = false;
             }
 
+
+          
             long normalizer = RAND_RANGE / firstSequenceLength,
                  max_site   = 0;
 
@@ -134,23 +162,97 @@ int main (int argc, const char * argv[])
             if (! args.quiet )
               cerr << endl << "Unique sites included in the resampled order " << total_resampled << endl;
         } else {
-              randSeqs = new long [sequenceCount];
+              randomized_fst = true;
+          
+              unsigned long total_count = 0UL,
+                            total_count_in_first = 0UL;
+          
               for (unsigned long k = 0; k < sequenceCount; k++) {
-                  randSeqs [k] = k;
+                unsigned long my_count = counts.value (k);
+                if (k < seqLengthInFile1) {
+                  total_count_in_first += my_count;
+                }
+                total_count += my_count;
+              }
+          
+      
+              unsigned long *expanded_counts = new unsigned long [total_count],
+                            expanded_index = 0UL;
+          
+          
+              for (unsigned long k = 0; k < sequenceCount; k++) {
+                unsigned long my_count = counts.value (k);
+                for (unsigned long i = 0; i < my_count; i++) {
+                  expanded_counts[expanded_index++] = k;
+                }
+              }
+          
+              for (unsigned long i = 0; i < total_count; i++) {
+                long id = genrand_int32 () / (RAND_RANGE / (total_count-i)),
+                t = expanded_counts[i+id];
+                expanded_counts[i+id]= expanded_counts[i];
+                expanded_counts[i] = t;
               }
 
-              init_genrand (time(NULL) + getpid ());
+ 
+          //void qsort (void* base, size_t num, size_t size,
+          // int (*compar)(const void*,const void*))
+          
+              qsort (expanded_counts, total_count_in_first, sizeof (unsigned long), compare_ul);
+              qsort (expanded_counts + total_count_in_first, total_count - total_count_in_first, sizeof (unsigned long), compare_ul);
 
-
-              for (unsigned long i = 0; i < sequenceCount; i++) {
-                  long id = genrand_int32 () / (RAND_RANGE / (sequenceCount-i)),
-                       t = randSeqs[i+id];
-                  randSeqs[i+id]= randSeqs[i];
-                  randSeqs[i] = t;
+              unsigned long last_sequence = expanded_counts[0],
+              last_index = 0UL;
+          
+              for (unsigned long i = 0UL; i < total_count_in_first; i++ ) {
+                if (expanded_counts [i] != last_sequence) {
+                  recounts.appendValue (i - last_index);
+                  last_index = i;
+                  randomized_idx.appendValue (last_sequence);
+                  last_sequence = expanded_counts [i];
+                }
               }
-              if (! args.quiet )
-                cerr << endl << "Randomized sequence assignment to datasets " << endl;
+          
+          
+              randomized_idx.appendValue (last_sequence);
+              recounts.appendValue (total_count_in_first - last_index);
+              seqLengthInFile1 = randomized_idx.length();
+          
+              last_sequence = expanded_counts[total_count_in_first];
+              last_index = total_count_in_first;
+              for (unsigned long i = total_count_in_first; i < total_count; i++ ) {
+                if (expanded_counts [i] != last_sequence) {
+                  recounts.appendValue (i - last_index);
+                  last_index = i;
+                  randomized_idx.appendValue (last_sequence);
+                  //cerr << randomized_idx2.value (randomized_idx2.length ()-1) << "/" << recount_2.value (recount_2.length()-1) << " (" << counts.value (last_sequence) << ")" << endl;
+                  last_sequence = expanded_counts [i];
+                }
+              }
+          
+              randomized_idx.appendValue (last_sequence);
+              recounts.appendValue (total_count_in_first - last_index);
+          
+          seqLengthInFile2 = randomized_idx.length() - seqLengthInFile1;
+          
+          if (! args.quiet )
+            cerr << endl << "Randomized sequence assignment to datasets " << seqLengthInFile1 << " variants ("  << total_count_in_first << ") to the first, and " << seqLengthInFile2 <<  " variants ("  << (total_count-total_count_in_first) << ") to the second" << endl;
+
+          sequence_descriptors = new sequence_gap_structure [sequenceCount];
+          for (long sid = 0; sid < sequenceCount; sid ++) {
+            sequence_descriptors[sid] = describe_sequence (stringText(sequences, seqLengths, sid),firstSequenceLength);
+          }
+         
+          sequenceCount = seqLengthInFile1 + seqLengthInFile2;
+          pairwise      = (sequenceCount-1) * (sequenceCount) / 2;
+          
+          delete [] expanded_counts;
         }
+    } else {
+      sequence_descriptors = new sequence_gap_structure [sequenceCount];
+      for (long sid = 0; sid < sequenceCount; sid ++) {
+        sequence_descriptors[sid] = describe_sequence (stringText(sequences, seqLengths, sid),firstSequenceLength);
+      }
     }
 
 
@@ -219,7 +321,7 @@ int main (int argc, const char * argv[])
         index 2 -- file 1 vs file 2
     */
 
-    #pragma omp parallel shared(skipped_comparisons, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs, weighted_counts, do_fst)
+    #pragma omp parallel shared(skipped_comparisons, sequence_descriptors, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs, weighted_counts, do_fst, randomized_fst, randomized_idx, recounts)
     
     {
     
@@ -233,15 +335,15 @@ int main (int argc, const char * argv[])
       #pragma omp for schedule (dynamic)
       for (long seq1 = 0; seq1 < upperBound; seq1 ++)
       {
-          long mapped_id = randSeqs?randSeqs[seq1]:seq1;
+          long mapped_id = randomized_fst ? randomized_idx.value (seq1) : (randSeqs?randSeqs[seq1]:seq1);
 
-          char *n1  = stringText (names, nameLengths, mapped_id),
-                *s1 = stringText(sequences, seqLengths, mapped_id);
+          char  *n1  = stringText (names, nameLengths, mapped_id),
+                *s1  = stringText(sequences, seqLengths, mapped_id);
 
-          long lowerBound = (args.input2 && !do_fst) ? seqLengthInFile1 : seq1 +1,
+          long lowerBound = (args.input2 && !do_fst) ? seqLengthInFile1 : seq1 +1L,
                compsSkipped      = 0,
                local_links_found = 0,
-               instances1 = counts.value (mapped_id);
+               instances1 = randomized_fst ? recounts.value (seq1) : counts.value (mapped_id);
 
           double local_max [3] = {0.,0.,0.},
                local_sum [3] = {0., 0., 0.},
@@ -249,9 +351,9 @@ int main (int argc, const char * argv[])
 
           for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
           {
-              long mapped_id2 = randSeqs?randSeqs[seq2]:seq2,
+              long mapped_id2 = randomized_fst ? randomized_idx.value (seq2) : (randSeqs?randSeqs[seq2]:seq2),
                    which_bin  = 0,
-                   weighted_count= instances1 * counts.value (mapped_id2);
+                   weighted_count= instances1 * (randomized_fst ? recounts.value (seq2) : counts.value (mapped_id2));
             
               if (do_fst) {
                 if (seq1 < seqLengthInFile1) {
@@ -263,7 +365,9 @@ int main (int argc, const char * argv[])
                 }
               }
             
-              double thisD = computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, &(histogram_counts[which_bin][0]), HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count);
+            
+            double thisD = sequence_descriptors ? computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, &(histogram_counts[which_bin][0]), HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count, 1L, &sequence_descriptors[mapped_id], &sequence_descriptors[mapped_id2]):
+                                                 computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, &(histogram_counts[which_bin][0]), HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count);
 
               if (thisD >= -1.e-10 && thisD <= args.distance) {
                   local_links_found += weighted_count;
@@ -285,7 +389,7 @@ int main (int argc, const char * argv[])
                   }
               }
               if (thisD <= -0.5) {
-                  compsSkipped += weighted_count;
+                  compsSkipped += 1;
               }
               else {
                   local_sum[which_bin] += thisD * (weighted_count);
@@ -402,6 +506,8 @@ int main (int argc, const char * argv[])
 
     if (randSeqs)
         delete [] randSeqs;
+    else
+        delete [] sequence_descriptors;
 
     return 0;
 
