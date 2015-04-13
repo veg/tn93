@@ -188,7 +188,7 @@ int main (int argc, const char * argv[])
               }
           
               for (unsigned long i = 0; i < total_count; i++) {
-                long id = genrand_int32 () / (total_count-i),
+                long id = genrand_int32 () % (total_count-i),
                 t = expanded_counts[i+id];
                 expanded_counts[i+id]= expanded_counts[i];
                 expanded_counts[i] = t;
