@@ -21,7 +21,7 @@ public:
     void					appendChar		(const char);
     void					appendBuffer	(const char*, const long = -1);
     void					resetString		(void);
-    void                    swap            (StringBuffer&);
+    void          swap            (StringBuffer&);
     unsigned long			length			(void) const {
         return sLength;
     }
@@ -93,9 +93,7 @@ public:
     void					storeVector		(const Vector&, const unsigned long);
     void					sort			(void);
     void                    swap            (Vector&);
-    long					value			(const long idx) const {
-        return vData[idx];
-    }
+    long					value			(const long idx) const;
     unsigned long			length			(void) const {
         return vLength;
     }

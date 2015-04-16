@@ -231,7 +231,7 @@ int main (int argc, const char * argv[])
               }
           
               randomized_idx.appendValue (last_sequence);
-              recounts.appendValue (total_count_in_first - last_index);
+              recounts.appendValue (total_count - last_index);
           
           seqLengthInFile2 = randomized_idx.length() - seqLengthInFile1;
           
@@ -311,6 +311,14 @@ int main (int argc, const char * argv[])
       
   }
   
+  /*
+   cout << recounts.length() << "/" << upperBound << endl;
+  
+  for (long k = 0; k < recounts.length(); k++) {
+    cout << k << " = " << recounts.value(k) << endl;
+  }
+  */
+   
   time_t before, after;
   time (&before); 
   double weighted_counts[3] = {0.,0.,0.};

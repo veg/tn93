@@ -157,6 +157,16 @@ void Vector::storeValue (const long v, const unsigned long l)
     vData[l] = v;
 }
 
+/*---------------------------------------------------------------------------------------------------- */
+
+long	Vector::value			(const long idx) const {
+  /*if (idx >= vLength) {
+    cerr << "Indexing past the end of a vector" << endl;
+    exit (1);
+  }*/
+  return vData[idx];
+}
+
 
 /*---------------------------------------------------------------------------------------------------- */
 
