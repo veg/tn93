@@ -105,9 +105,9 @@ int main (int argc, const char * argv[]) {
         }
         
         if (args.data == protein) 
-          handle_a_sequence_aa (sequences, freq_counts, firstSequenceLength, copy_count.value(0), args.ambig == ignore);        
+          handle_a_sequence_aa (sequences, freq_counts, firstSequenceLength, copy_count.value(0), args.ambig == skipover);
         else
-          handle_a_sequence (sequences, freq_counts, firstSequenceLength, copy_count.value(0), args.ambig == ignore);
+          handle_a_sequence (sequences, freq_counts, firstSequenceLength, copy_count.value(0), args.ambig == skipover);
         sequences_read ++;
         sequence_copies += copy_count.value(0);
         /*if (args.quiet == false && sequences_read % 1000 == 0) {

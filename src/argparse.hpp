@@ -45,6 +45,7 @@ namespace argparse
         format_t        format;
         unsigned long   overlap;
         bool            do_bootstrap;
+        bool            do_bootstrap_two_files;
         bool            do_count;
         bool            quiet;
         bool            do_fst;
@@ -68,6 +69,7 @@ namespace argparse
         void parse_counts_in_name
                             ( const char * );
         void parse_bootstrap( void );
+        void parse_bootstrap_two_files( void );
         void parse_count    ( void );
         void parse_quiet    ( void );
         void parse_fst      ( void );

@@ -6,7 +6,7 @@
 
 
 #define PROGNAME                 "seqcoverage"
-#define DEFAULT_AMBIG             ignore
+#define DEFAULT_AMBIG             skipover
 #define DEFAULT_DATA              dna
 #define DEFAULT_COUNTS_IN_NAME    ':'
 
@@ -14,7 +14,7 @@ namespace argparse
 {
   
     enum ambig_t {
-      ignore,
+      skipover,
       average,
     };
     

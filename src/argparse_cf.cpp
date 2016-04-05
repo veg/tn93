@@ -151,7 +151,7 @@ namespace argparse
     if (!strcmp (str, "average")) {
       ambig = average;
     } else if (!strcmp (str, "ignore")) {
-      ambig = ignore;
+      ambig = skipover;
     } else {
       ERROR( "invalid ambiguity handling mode: %s", str );
     }

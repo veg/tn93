@@ -130,7 +130,7 @@ int main (int argc, const char * argv[])
   
 
     if (args.do_bootstrap) {
-        if (args.input2 == NULL) {
+        if (args.input2 == NULL || args.do_bootstrap_two_files) {
             if (! args.quiet )
               cerr << endl << "Randomizing site order..." << endl;
             randFlag = new long [firstSequenceLength];

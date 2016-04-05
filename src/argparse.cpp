@@ -26,6 +26,7 @@ namespace argparse
   "[-f FORMAT] "
   "[-s SECOND_FASTA] "
   "[-b] "
+  "[-r] "
   "[-c] "
   "[-q] "
   "[FASTA]\n";
@@ -57,6 +58,9 @@ namespace argparse
   "  -s SECOND_FASTA          if specified, read another FASTA file from SECOND_FASTA and perform pairwise comparison BETWEEN the files (default=NULL)\n"
   "  -b                       bootstrap alignment columns before computing distances (default = false)\n"
   "                           when -s is supplied, permutes the assigment of sequences to files\n"
+  "                           interacts with -r option\n"
+  "  -r                       if -b is specified AND -s is supplied, using -r will bootstrap across sites\n"
+  "                           instead of allocating sequences to 'compartments' randomly\n"
   "  -c                       only count the pairs below a threshold, do not write out all the pairs \n"
   "  -m                       compute inter- and intra-population means suitable for FST caclulations\n"
   "                           only applied when -s is used to provide a second file\n"
@@ -101,6 +105,7 @@ namespace argparse
   format ( DEFAULT_FORMAT ),
   overlap ( DEFAULT_OVERLAP ),
   do_bootstrap( false ),
+  do_bootstrap_two_files ( false ),
   do_count( false ),
   quiet( false ),
   do_fst( false ),
@@ -129,6 +134,7 @@ namespace argparse
         else if (  arg[1] == 'd')  parse_counts_in_name( next_arg (i, argc, argv) );
         else if (  arg[1] == 'u')  parse_include_prob( next_arg (i, argc, argv) );
         else if (  arg[1] == 'b')  parse_bootstrap();
+        else if (  arg[1] == 'r')  parse_bootstrap_two_files ();
         else if (  arg[1] == 'c')  parse_count();
         else if (  arg[1] == 'q')  parse_quiet();
         else if (  arg[1] == 'm')  parse_fst();
@@ -274,6 +280,11 @@ namespace argparse
   void args_t::parse_bootstrap()
   {
     do_bootstrap = true;
+  }
+
+  void args_t::parse_bootstrap_two_files ()
+  {
+    do_bootstrap_two_files = true;
   }
   
   void args_t::parse_quiet()
