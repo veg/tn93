@@ -328,8 +328,10 @@ int main (int argc, const char * argv[])
         index 1 -- file 2
         index 2 -- file 1 vs file 2
     */
+  
+    bool cross_comparison_only = (args.input2 && !do_fst);
 
-    #pragma omp parallel shared(skipped_comparisons, sequence_descriptors, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs, weighted_counts, do_fst, randomized_fst, randomized_idx, recounts)
+    #pragma omp parallel shared(skipped_comparisons, sequence_descriptors, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs, weighted_counts, do_fst, randomized_fst, randomized_idx, recounts, cross_comparison_only)
     
     {
     
@@ -347,8 +349,9 @@ int main (int argc, const char * argv[])
 
           char  *n1  = stringText (names, nameLengths, mapped_id),
                 *s1  = stringText(sequences, seqLengths, mapped_id);
-
-          long lowerBound = (args.input2 && !do_fst) ? seqLengthInFile1 : seq1 +1L,
+        
+ 
+          long lowerBound = cross_comparison_only ? seqLengthInFile1 : seq1 +1L,
                compsSkipped      = 0,
                local_links_found = 0,
                instances1 = randomized_fst ? recounts.value (seq1) : counts.value (mapped_id);
@@ -356,6 +359,18 @@ int main (int argc, const char * argv[])
           double local_max [3] = {0.,0.,0.},
                local_sum [3] = {0., 0., 0.},
                local_weighted [3] = {0.,0.,0.};
+        
+          if (!cross_comparison_only && instances1 > 1) {
+              // add zero distances for self vs self
+              unsigned long self_v_self = (instances1*(instances1-1L)) >> 1;
+              if (seq1 < seqLengthInFile1) {
+                local_weighted [0] += self_v_self;
+                histogram_counts[0][0] += self_v_self;
+              } else {
+                local_weighted [1] += self_v_self;
+                histogram_counts[1][0] += self_v_self;
+              }
+          }
 
           for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
           {
@@ -366,7 +381,7 @@ int main (int argc, const char * argv[])
               if (do_fst) {
                 if (seq1 < seqLengthInFile1) {
                   if (seq2 >= seqLengthInFile1) {
-                    which_bin = 2;
+                    which_bin = 2; // file 1 vs file 2
                   }
                 } else {
                   which_bin = 1;
