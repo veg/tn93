@@ -503,7 +503,9 @@ int main (int argc, const char * argv[])
              intra_pop =(mean[0]+mean[1])/(weighted_counts[0] + weighted_counts[1]),
              pi_D = mean[2]/weighted_counts[2] - intra_pop;
       
-      (*outStream) << "\t\"Mean distance " << keys[3] << "\" : " << meta << ',' << endl;
+      (*outStream) << "\t\"Mean distance [intra] "  << "\" : " << intra_pop << ',' << endl;
+      (*outStream) << "\t\"Mean distance [inter] "  << "\" : " << mean[2]/weighted_counts[2] << ',' << endl;
+      (*outStream) << "\t\"Mean distance [combined]"  << "\" : " << meta << ',' << endl;
       (*outStream) << "\t\"F_ST\" : " << pi_D/(intra_pop+pi_D) << ',' << endl;
       
       for (unsigned long k = 0; k < 3; k++) {
