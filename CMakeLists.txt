@@ -7,8 +7,11 @@ project(TN93)
 set(INSTALL_PREFIX /usr/local CACHE PATH "Installation prefix")
 set(CMAKE_INSTALL_PREFIX ${INSTALL_PREFIX} CACHE INTERNAL "Installation prefix" FORCE)
 
-
 set(CMAKE_CONFIGURATION_TYPES Release)
+
+# SET VERSION FROM FILE
+file (STRINGS "VERSION.txt" VERSION_NUMBER)
+add_definitions (-DVERSION_NUMBER=\"${VERSION_NUMBER}\")
 
 include_directories(
     src/

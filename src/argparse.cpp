@@ -17,6 +17,7 @@ namespace argparse
 {
   const char usage[] =
   "usage: " PROGNAME " [-h] "
+  "[-v] "
   "[-o OUTPUT] "
   "[-t THRESHOLD] "
   "[-a AMBIGS] "
@@ -36,6 +37,7 @@ namespace argparse
   "\n"
   "optional arguments:\n"
   "  -h, --help               show this help message and exit\n"
+  "  -v, --version            show tn93 version \n"
   "  -o OUTPUT                direct the output to a file named OUTPUT (default=stdout)\n"
   "  -t THRESHOLD             only report (count) distances below this threshold (>=0, default=" TO_STR (DEFAULT_DISTANCE)")\n"
   "  -a AMBIGS                handle ambigous nucleotides using one of the following strategies (default=" TO_STR( DEFAULT_AMBIG ) ")\n"
@@ -74,6 +76,14 @@ namespace argparse
     fprintf( stderr, "%s\n%s", usage, help_msg );
     exit( 1 );
   }
+
+  inline
+  void version()
+  {
+    fprintf( stderr, "%s\n", VERSION_NUMBER);
+    exit( 0 );
+  }
+
   
   inline
   void ERROR( const char * msg, ... )
@@ -120,11 +130,13 @@ namespace argparse
       
       if ( arg[0] == '-' && arg[1] == '-' ) {
         if ( !strcmp( &arg[2], "help" ) ) help();
+        else if ( !strcmp( &arg[2], "version" ) ) version();
         else
           ERROR( "unknown argument: %s", arg );
       }
       else if ( arg[0] == '-' ) {
         if ( !strcmp( &arg[1], "h" ) ) help();
+        else if (  arg[1] == 'v' ) version();
         else if (  arg[1] == 'o' ) parse_output( next_arg (i, argc, argv) );
         else if (  arg[1] == 't' ) parse_distance ( next_arg (i, argc, argv) );
         else if (  arg[1] == 'l')  parse_overlap( next_arg (i, argc, argv) );

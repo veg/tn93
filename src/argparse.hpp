@@ -4,7 +4,6 @@
 
 // argument defaults
 
-
 #define PROGNAME                 "tn93"
 #define DEFAULT_AMBIG             resolve
 #define DEFAULT_FORMAT            csv
@@ -14,6 +13,9 @@
 #define DEFAULT_OVERLAP           100
 #define DEFAULT_INCLUDE_PROB      1.0
 
+#ifndef VERSION_NUMBER
+#define VERSION_NUMBER            "UNKNOWN"
+#endif
 
 namespace argparse
 {
