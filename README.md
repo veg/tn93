@@ -45,6 +45,7 @@ ARGUMENTS
 
     optional arguments:
       -h, --help               show this help message and exit
+      -v, --version            show tn93 version 
       -o OUTPUT                direct the output to a file named OUTPUT (default=stdout)
       -t THRESHOLD             only report (count) distances below this threshold (>=0, default=0.015)
       -a AMBIGS                handle ambigous nucleotides using one of the following strategies (default=resolve)
