@@ -455,6 +455,10 @@ int main (int argc, const char * argv[]) {
             if (args.trunk_path) {
                 fclose (print_to);
             }
+
+        }
+        if (args.trunk_path) {
+            delete [] path_buffer;
         }
     }
     
