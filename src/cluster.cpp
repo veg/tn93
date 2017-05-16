@@ -315,6 +315,8 @@ int main (int argc, const char * argv[]) {
         
         // failing that, the new sequence gets its own cluster
         
+        unsigned long mergers = 0UL;
+        
         while (outer_iterator != remaining.end()) {
             
             unsigned long seq1 = *outer_iterator;
@@ -356,6 +358,7 @@ int main (int argc, const char * argv[]) {
                 while (cluster_iterator != join_to.end()) {
                     //cout << "Merging " << first << " and " << *cluster_iterator << " on " << seq1 << endl;
                     clusters.merge_clusters(first, *cluster_iterator);
+                    mergers++;
                     cluster_iterator++;
                 }
             }
@@ -366,8 +369,8 @@ int main (int argc, const char * argv[]) {
                 double dt = difftime (after,before);
                 if (dt > 0.) {
                     percentDone = (sequenceCount-remaining.size()) * 100. / sequenceCount;
-                    cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:"
-                    << setw (8) << percentDone << "% (" << setw(8) << clusters.size() << " clusters created, "
+                    cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:"
+                    << setw (8) << percentDone << "% (" << setw(8) << clusters.size() << "[" << setw(8) << mergers << "] clusters created [merged], "
                     << setw (12) << std::setprecision(3) << ((double)sequenceCount-remaining.size())/dt << " sequences clustered/sec)";
                     
                     after = before;
