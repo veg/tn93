@@ -50,13 +50,14 @@ public:
     void     remove_blanks (void) {
         if (unused > 0UL) {
             unsigned long shift = 0UL;
-            for (unsigned long k = 0UL; k < allocated_clusters; k++) {
+            for (unsigned long k = 0UL; k < allocated_clusters && shift <= unused; k++) {
                 if (list_of_clusters[k] == NULL) {
                     shift++;
                 } else {
                     _swap (list_of_clusters[k-shift], list_of_clusters[k]);
                 }
             }
+            unused = 0UL;
         }
         
         
@@ -68,7 +69,7 @@ public:
             delete list_of_clusters [cluster_id];
             list_of_clusters [cluster_id] = NULL;
         } else {
-            cerr << "Requested the removal of an invalid cluster " << cluster_id << endl;
+            cerr << "Requested the removal of an invalid cluster " << cluster_id << " out of " << allocated_clusters << " allocated clusters " << endl;
             exit (1);
         }
     }
@@ -93,7 +94,7 @@ public:
             return list_of_clusters[index];
         }
         else {
-            cerr << "Requested an invalid cluster index " << index << endl;
+            cerr << "Requested an invalid cluster index " << index << " out of " << allocated_clusters << " allocated clusters " << endl;;
             exit (1);
         }
     }
@@ -119,7 +120,7 @@ public:
         } else {
             slot = cluster_count;
             if (cluster_count == allocated_clusters) {
-                unsigned long new_allocation = allocated_clusters + (allocated_clusters > 512L ? (allocated_clusters >> 2) : 128UL);
+                unsigned long new_allocation = allocated_clusters + (allocated_clusters > 512UL ? (allocated_clusters >> 2) : 128UL);
                 Vector ** new_vectors = new Vector* [new_allocation];
                 
                 for (unsigned long k = 0UL; k < allocated_clusters; k++) {
@@ -294,14 +295,17 @@ int main (int argc, const char * argv[]) {
             outer_iterator = remaining.begin();
             if (!args.quiet) {
                 time (&after);
-                percentDone = (sequenceCount-remaining.size()) * 100. / sequenceCount;
-                cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:"
-                << setw (8) << percentDone << "% (" << setw(8) << clusters.size() << " clusters created, "
-                << setw (12) << std::setprecision(3) << ((double)sequenceCount-remaining.size())/difftime (after,before) << " sequences clustered/sec)";
-                
-                after = before;
+                double dt = difftime (after,before);
+                if (dt > 0.) {
+                    percentDone = (sequenceCount-remaining.size()) * 100. / sequenceCount;
+                    cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:"
+                    << setw (8) << percentDone << "% (" << setw(8) << clusters.size() << " clusters created, "
+                    << setw (12) << std::setprecision(3) << ((double)sequenceCount-remaining.size())/dt << " sequences clustered/sec)";
+                    
+                    after = before;
+                }
             }
-       }
+        }
     } else {
         auto outer_iterator = remaining.begin();
         
@@ -357,19 +361,22 @@ int main (int argc, const char * argv[]) {
             outer_iterator = remaining.begin();
             if (!args.quiet) {
                 time (&after);
-                percentDone = (sequenceCount-remaining.size()) * 100. / sequenceCount;
-                cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:"
-                << setw (8) << percentDone << "% (" << setw(8) << clusters.size() << " clusters created, "
-                << setw (12) << std::setprecision(3) << ((double)sequenceCount-remaining.size())/difftime (after,before) << " sequences clustered/sec)";
-                
-                after = before;
+                double dt = difftime (after,before);
+                if (dt > 0.) {
+                    percentDone = (sequenceCount-remaining.size()) * 100. / sequenceCount;
+                    cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:"
+                    << setw (8) << percentDone << "% (" << setw(8) << clusters.size() << " clusters created, "
+                    << setw (12) << std::setprecision(3) << ((double)sequenceCount-remaining.size())/dt << " sequences clustered/sec)";
+                    
+                    after = before;
+                }
             }
         }
         
     }
     
     if (!args.quiet) {
-        cerr << endl;
+        cerr << endl << "Created " << clusters.size() << " clusters" << endl;
     }
     clusters.remove_blanks();
     
