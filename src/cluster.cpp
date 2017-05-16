@@ -2,10 +2,11 @@
 #include "tn93_shared.h"
 
 #ifdef  _OPENMP
-  #include "omp.h"
+#include "omp.h"
 #endif
 
-#include "argparse.hpp"
+#include "argparse_cluster.hpp"
+#include <set>
 
 
 using namespace std;
@@ -14,38 +15,151 @@ using namespace argparse;
 #define HISTOGRAM_BINS 200
 #define HISTOGRAM_SLICE ((double)HISTOGRAM_BINS)
 
-char sep = ':';
-
-  //---------------------------------------------------------------
-
-
-void dump_histogram (ostream* outStream, const char* tag, unsigned long * hist) {
-  if (tag) {
-    (*outStream) << "\t\"Histogram " << tag <<"\" : [";
-  } else {
-    (*outStream) << "\t\"Histogram\" : [";
-  }
-  for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
-    if (k) {
-      (*outStream) << ',';
-    }
-    (*outStream) << '[' << (k+1.) / HISTOGRAM_BINS << ',' << hist[k] << ']';
-  }
-  (*outStream) << "]" << endl;
+template <typename datatype>
+void _swap (datatype& a, datatype& b) {
+    datatype t = b;
+    b = a;
+    a = t;
 }
+
+//---------------------------------------------------------------
+
+
+class   Clusters {
+public:
+    Clusters (void) {
+        allocated_clusters = 128UL;
+        cluster_count = 0UL;
+        unused = 0UL;
+        list_of_clusters = new Vector* [allocated_clusters];
+        for (unsigned long k = 0UL; k < allocated_clusters; k++) {
+            list_of_clusters[k] = NULL;
+        }
+    }
+    ~Clusters (void) {
+        for (unsigned long k = 0UL; k < allocated_clusters; k++) {
+            if (list_of_clusters[k]) {
+                delete list_of_clusters[k];
+            }
+        }
+        delete list_of_clusters;
+        
+    }
+    
+    unsigned long size (void) const {return cluster_count;}
+    void     remove_blanks (void) {
+        if (unused > 0UL) {
+            unsigned long shift = 0UL;
+            for (unsigned long k = 0UL; k < allocated_clusters; k++) {
+                if (list_of_clusters[k] == NULL) {
+                    shift++;
+                } else {
+                    _swap (list_of_clusters[k-shift], list_of_clusters[k]);
+                }
+            }
+        }
+        
+        
+    }
+    
+    void     remove_a_cluster (unsigned long cluster_id) {
+        if (cluster_id < allocated_clusters && list_of_clusters [cluster_id]) {
+            unused ++;
+            delete list_of_clusters [cluster_id];
+            list_of_clusters [cluster_id] = NULL;
+        } else {
+            cerr << "Requested the removal of an invalid cluster " << cluster_id << endl;
+            exit (1);
+        }
+    }
+    
+    void     merge_clusters (unsigned long id1, unsigned long id2) {
+        if (id1 != id2 && id1 < allocated_clusters && id2 < allocated_clusters && list_of_clusters [id1] && list_of_clusters [id2]) {
+            list_of_clusters[id1]->appendVector (*list_of_clusters[id2]);
+            list_of_clusters[id1]->sort();
+            delete list_of_clusters[id2];
+            list_of_clusters[id2] = NULL;
+            cluster_count --;
+            unused ++;
+        }
+        else {
+            cerr << "Requested the merger using an invalid cluster " << id1 << " and " << id2 << endl;
+            exit (1);
+        }
+    }
+    
+    Vector *    operator [] (unsigned long index) {
+        if (index < allocated_clusters) {
+            return list_of_clusters[index];
+        }
+        else {
+            cerr << "Requested an invalid cluster index " << index << endl;
+            exit (1);
+        }
+    }
+    
+    Vector*     append_a_cluster (unsigned long sequence_id) {
+        /** allocate a new cluster and seed it with sequence sequence_id
+         
+         @param sequence_id
+         
+         return the new cluster vector
+         */
+        
+        unsigned long slot = 0UL;
+        
+        if (unused > 0UL) {
+            for (unsigned long k = 0UL; k < allocated_clusters; k++) {
+                if (list_of_clusters [k] == NULL) {
+                    slot = k;
+                    break;
+                }
+                unused --;
+            }
+        } else {
+            slot = cluster_count;
+            if (cluster_count == allocated_clusters) {
+                unsigned long new_allocation = allocated_clusters + (allocated_clusters > 512L ? (allocated_clusters >> 2) : 128UL);
+                Vector ** new_vectors = new Vector* [new_allocation];
+                
+                for (unsigned long k = 0UL; k < allocated_clusters; k++) {
+                    new_vectors[k] = list_of_clusters[k];
+                }
+                for (unsigned long k = allocated_clusters; k < new_allocation; k++) {
+                    new_vectors[k] = NULL;
+                }
+                
+                delete [] list_of_clusters;
+                allocated_clusters = new_allocation;
+                list_of_clusters = new_vectors;
+            }
+        }
+        
+        Vector * new_vector = (list_of_clusters[slot] = new Vector);
+        new_vector->appendValue(sequence_id);
+        cluster_count++;
+        return new_vector;
+    }
+    
+private:
+    Vector   ** list_of_clusters;
+    unsigned long allocated_clusters,
+    cluster_count,
+    unused;
+};
 
 //---------------------------------------------------------------
 
 
 int compare_ul (const void* v1,const void* v2) {
     const unsigned long *ul1 = (const unsigned long*)v1,
-                        *ul2 = (const unsigned long*)v2;
-  
+    *ul2 = (const unsigned long*)v2;
+    
     if (*ul1 < *ul2) {
-      return -1;
+        return -1;
     }
     if (*ul1 > *ul2) {
-      return 1;
+        return 1;
     }
     return 0;
 }
@@ -55,485 +169,297 @@ int compare_ul (const void* v1,const void* v2) {
 //---------------------------------------------------------------
 
 
-int main (int argc, const char * argv[])
-{
+int main (int argc, const char * argv[]) {
     args_t args = args_t (argc, argv);
-
+    
     long     firstSequenceLength = 0;
-
-
-    StringBuffer names,
-                 sequences;
-
-    Vector       nameLengths,
-                 seqLengths,
-                 counts,
-                 randomized_idx,
-                 recounts;
-  
-
-    bool         randomized_fst = false;
-
+    
+    
+    
+    set<unsigned long> remaining; // sequence ids not yet clustered
+    
+    Clusters    clusters;
+    
+    
     char automatonState = 0;
     // 0 - between sequences
     // 1 - reading sequence name
     // 2 - reading sequence
-
-    init_genrand (time(NULL) + getpid ());
-
+    
     nameLengths.appendValue (0);
     seqLengths.appendValue (0);
     
     initAlphabets(false, args.ambigs_to_resolve);
-    if (readFASTA (args.input1, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, false, &counts, args.counts_in_name, args.include_prob) == 1)
+    if (readFASTA (args.input, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength) == 1)
         return 1;
-
-
-    unsigned long seqLengthInFile1 = seqLengths.length()-1,
-                  seqLengthInFile2 = 0;
-
-    if (args.input2) {
-        automatonState = 0;
-        if (readFASTA (args.input2, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, false, &counts, args.counts_in_name,args.include_prob) == 1)
-            return 1;
-        seqLengthInFile2 = seqLengths.length()-1-seqLengthInFile1;
-    }
-
-    bool  do_fst = args.input2 && args.do_fst;
+    
+    
     unsigned long sequenceCount = seqLengths.length()-1,
-                  pairwise      = (args.input2 && !do_fst) ? seqLengthInFile2*seqLengthInFile1 : (sequenceCount-1) * (sequenceCount) / 2;
-
-  
+    pairwise      = (sequenceCount-1L) * (sequenceCount) / 2;
+    
+    
     if (! args.quiet ) {
-      if (args.input2 == NULL) {
-        cerr << "Read " << sequenceCount << " sequences of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
-      } else {
-        cerr << "Read " << seqLengthInFile1 << " sequences from file 1 and " << seqLengthInFile2 << " sequences from file 2 of length " << firstSequenceLength << endl << "Will perform " << pairwise << " pairwise distance calculations";
-        if (do_fst) {
-          cerr << ". Running in F_ST mode";
-        }
-      }
+        cerr << "Read " << sequenceCount << " sequences from input file " << endl << "Will perform approximately " << pairwise << " pairwise distance calculations";
     }
-  
-   sequence_gap_structure * sequence_descriptors = NULL;
-  
-  
+    
+    sequence_gap_structure * sequence_descriptors = NULL;
+    
     resolve_fraction = args.resolve_fraction;
-  
-    double percentDone    = 0.,
-           max[3]         = {0.0,0.0,0.0},
-           mean[3]        = {0.0,0.0,0.0};
-
-    long * randFlag = NULL;
-    long * randSeqs = NULL;
-  
-  
-
-    if (args.do_bootstrap) {
-        if (args.input2 == NULL || args.do_bootstrap_two_files) {
-            if (! args.quiet )
-              cerr << endl << "Randomizing site order..." << endl;
-            randFlag = new long [firstSequenceLength];
-            bool   *included = new bool [firstSequenceLength];
-            for (long k = 0; k < firstSequenceLength; k++) {
-                included[k] = false;
-            }
-
-
-          
-            long normalizer = RAND_RANGE / firstSequenceLength,
-                 max_site   = 0;
-
-
-            for (long i = 0; i < firstSequenceLength; i++) {
-                randFlag[i] = genrand_int32 () / normalizer;
-                if (! args.quiet)
-                  cerr << randFlag[i] << " ";
-                included[randFlag[i]] = true;
-                if (randFlag[i] > max_site) max_site = randFlag[i];
-            }
-
-            long total_resampled = 0;
-            for (long k = 0; k < firstSequenceLength; k++) {
-                total_resampled += included[k];
-            }
-
-            delete [] included;
-            if (! args.quiet )
-              cerr << endl << "Unique sites included in the resampled order " << total_resampled << endl;
-        } else {
-              randomized_fst = true;
-          
-              unsigned long total_count = 0UL,
-                            total_count_in_first = 0UL;
-          
-              for (unsigned long k = 0; k < sequenceCount; k++) {
-                unsigned long my_count = counts.value (k);
-                if (k < seqLengthInFile1) {
-                  total_count_in_first += my_count;
-                }
-                total_count += my_count;
-              }
-          
-      
-              unsigned long *expanded_counts = new unsigned long [total_count],
-                            expanded_index = 0UL;
-          
-          
-              for (unsigned long k = 0; k < sequenceCount; k++) {
-                unsigned long my_count = counts.value (k);
-                for (unsigned long i = 0; i < my_count; i++) {
-                  expanded_counts[expanded_index++] = k;
-                }
-              }
-          
-              for (unsigned long i = 0; i < total_count; i++) {
-                long id = genrand_int32 () % (total_count-i),
-                t = expanded_counts[i+id];
-                expanded_counts[i+id]= expanded_counts[i];
-                expanded_counts[i] = t;
-              }
-
- 
-          //void qsort (void* base, size_t num, size_t size,
-          // int (*compar)(const void*,const void*))
-          
-              qsort (expanded_counts, total_count_in_first, sizeof (unsigned long), compare_ul);
-              qsort (expanded_counts + total_count_in_first, total_count - total_count_in_first, sizeof (unsigned long), compare_ul);
-
-              unsigned long last_sequence = expanded_counts[0],
-              last_index = 0UL;
-          
-              for (unsigned long i = 0UL; i < total_count_in_first; i++ ) {
-                if (expanded_counts [i] != last_sequence) {
-                  recounts.appendValue (i - last_index);
-                  last_index = i;
-                  randomized_idx.appendValue (last_sequence);
-                  last_sequence = expanded_counts [i];
-                }
-              }
-          
-          
-              randomized_idx.appendValue (last_sequence);
-              recounts.appendValue (total_count_in_first - last_index);
-              seqLengthInFile1 = randomized_idx.length();
-          
-              last_sequence = expanded_counts[total_count_in_first];
-              last_index = total_count_in_first;
-              for (unsigned long i = total_count_in_first; i < total_count; i++ ) {
-                if (expanded_counts [i] != last_sequence) {
-                  recounts.appendValue (i - last_index);
-                  last_index = i;
-                  randomized_idx.appendValue (last_sequence);
-                  //cerr << randomized_idx2.value (randomized_idx2.length ()-1) << "/" << recount_2.value (recount_2.length()-1) << " (" << counts.value (last_sequence) << ")" << endl;
-                  last_sequence = expanded_counts [i];
-                }
-              }
-          
-              randomized_idx.appendValue (last_sequence);
-              recounts.appendValue (total_count - last_index);
-          
-          seqLengthInFile2 = randomized_idx.length() - seqLengthInFile1;
-          
-          if (! args.quiet )
-            cerr << endl << "Randomized sequence assignment to datasets " << seqLengthInFile1 << " variants ("  << total_count_in_first << ") to the first, and " << seqLengthInFile2 <<  " variants ("  << (total_count-total_count_in_first) << ") to the second" << endl;
-
-          sequence_descriptors = new sequence_gap_structure [sequenceCount];
-          for (long sid = 0; sid < sequenceCount; sid ++) {
-            sequence_descriptors[sid] = describe_sequence (stringText(sequences, seqLengths, sid),firstSequenceLength);
-          }
-         
-          sequenceCount = seqLengthInFile1 + seqLengthInFile2;
-          pairwise      = (sequenceCount-1) * (sequenceCount) / 2;
-          
-          delete [] expanded_counts;
-        }
-    } else {
-      sequence_descriptors = new sequence_gap_structure [sequenceCount];
-      for (long sid = 0; sid < sequenceCount; sid ++) {
+    
+    double percentDone    = 0.;
+    
+    sequence_descriptors = new sequence_gap_structure [sequenceCount];
+    for (unsigned long sid = 0UL; sid < sequenceCount; sid ++) {
         sequence_descriptors[sid] = describe_sequence (stringText(sequences, seqLengths, sid),firstSequenceLength);
-      }
+        if (sid > 0UL) {
+            remaining.insert (sid);
+        }
     }
-
-
+    
+    
     if (! args.quiet )
-      cerr << endl << "Progress: ";
-
-    long pairIndex  = 0,
-         foundLinks = 0;
-
-    double *distanceMatrix = NULL;
-
-    if (args.format != hyphy) {
-        if (args.do_count == false) {
-            if (args.format == csv)
-                fprintf (args.output, "ID1,ID2,Distance\n");
-            else
-                fprintf (args.output, "Seq1,Seq2,Distance\n");
-        }
-    }
-    else {
-        distanceMatrix = new double [sequenceCount*sequenceCount];
-        for (unsigned long i = 0; i < sequenceCount*sequenceCount; i++)
-            distanceMatrix[i] = 100.;
-        for (unsigned long i = 0; i < sequenceCount; i++)
-            distanceMatrix[i*sequenceCount+i] = 0.;
-    }
-
-    long upperBound = (args.input2 && !do_fst) ? seqLengthInFile1 : sequenceCount,
-         skipped_comparisons = 0;
-         
+        cerr << endl << "Progress: ";
     
-    unsigned long global_hist [3][HISTOGRAM_BINS];
-    for (unsigned long k = 0; k < 3; k++) {
-      for (unsigned long r = 0; r < HISTOGRAM_BINS; r++) {
-        global_hist[k][r] = 0;
-      }
-    }
-  
+    
+    
     int resolutionOption;
-  switch (args.ambig) {
-    case resolve:
-      resolutionOption = RESOLVE;
-      break;
-    case average:
-      resolutionOption = AVERAGE;
-      break;
-    case skip:
-      resolutionOption = SKIP;
-      break;
-    case gapmm:
-      resolutionOption = GAPMM;
-      break;
-    case subset:
-      resolutionOption = SUBSET;
-      break;
-      
-  }
-  
-  /*
-   cout << recounts.length() << "/" << upperBound << endl;
-  
-  for (long k = 0; k < recounts.length(); k++) {
-    cout << k << " = " << recounts.value(k) << endl;
-  }
-  */
-   
-  time_t before, after;
-  time (&before); 
-  double weighted_counts[3] = {0.,0.,0.};
-    /*
-      if do_fst is true:
-        index 0 -- file 1
-        index 1 -- file 2
-        index 2 -- file 1 vs file 2
-    */
-  
-    bool cross_comparison_only = (args.input2 && !do_fst);
-
-    #pragma omp parallel shared(skipped_comparisons, sequence_descriptors, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs, weighted_counts, do_fst, randomized_fst, randomized_idx, recounts, cross_comparison_only)
+    switch (args.ambig) {
+        case resolve:
+            resolutionOption = RESOLVE;
+            break;
+        case average:
+            resolutionOption = AVERAGE;
+            break;
+        case skip:
+            resolutionOption = SKIP;
+            break;
+        case gapmm:
+            resolutionOption = GAPMM;
+            break;
+        case subset:
+            resolutionOption = SUBSET;
+            break;
+            
+    }
     
-    {
     
-      unsigned long histogram_counts [3][HISTOGRAM_BINS];
-      for (unsigned long k = 0; k < 3; k++) {
-        for (unsigned long r = 0; r < HISTOGRAM_BINS; r++) {
-          histogram_counts[k][r] = 0;
-        }
-      }
+    time_t before, after;
+    time (&before);
     
-      #pragma omp for schedule (dynamic)
-      for (long seq1 = 0; seq1 < upperBound; seq1 ++)
-      {
-          long mapped_id = randomized_fst ? randomized_idx.value (seq1) : (randSeqs?randSeqs[seq1]:seq1);
-
-          char  *n1  = stringText (names, nameLengths, mapped_id),
-                *s1  = stringText(sequences, seqLengths, mapped_id);
+    if (args.cluster_type == all) {
         
+        auto outer_iterator = remaining.begin();
+
+        while (outer_iterator != remaining.end()) {
+            
+            unsigned long seq1 = *outer_iterator;
+        
+            char  *base_sequence  = stringText(sequences, seqLengths, seq1);
+            
+            Vector * current_cluster = clusters.append_a_cluster(seq1);
+            
+            outer_iterator = remaining.erase (outer_iterator);
+
+            auto inner_iterator = remaining.begin();
+            
+            while (inner_iterator != remaining.end()) {
  
-          long lowerBound = cross_comparison_only ? seqLengthInFile1 : seq1 +1L,
-               compsSkipped      = 0,
-               local_links_found = 0,
-               instances1 = randomized_fst ? recounts.value (seq1) : counts.value (mapped_id);
+                unsigned long seq2 = *inner_iterator;
+                char  *test_sequence  = stringText(sequences, seqLengths, seq2);
 
-          double local_max [3] = {0.,0.,0.},
-               local_sum [3] = {0., 0., 0.},
-               local_weighted [3] = {0.,0.,0.};
-        
-          if (!cross_comparison_only && instances1 > 1) {
-              // add zero distances for self vs self
-              unsigned long self_v_self = (instances1*(instances1-1L)) >> 1;
-              if (seq1 < seqLengthInFile1) {
-                local_weighted [0] += self_v_self;
-                histogram_counts[0][0] += self_v_self;
-              } else {
-                local_weighted [1] += self_v_self;
-                histogram_counts[1][0] += self_v_self;
-              }
-          }
-
-          for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
-          {
-              long mapped_id2 = randomized_fst ? randomized_idx.value (seq2) : (randSeqs?randSeqs[seq2]:seq2),
-                   which_bin  = 0,
-                   weighted_count= instances1 * (randomized_fst ? recounts.value (seq2) : counts.value (mapped_id2));
-            
-              if (do_fst) {
-                if (seq1 < seqLengthInFile1) {
-                  if (seq2 >= seqLengthInFile1) {
-                    which_bin = 2; // file 1 vs file 2
-                  }
-                } else {
-                  which_bin = 1;
+                try {
+                    double distance = computeTN93(base_sequence, test_sequence, firstSequenceLength, resolutionOption, false, args.overlap, NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq1], &sequence_descriptors[seq2]);
+                    
+                    if (distance <= args.distance) {
+                        // check if this can be merged into the current cluster
+                        for (unsigned long current_cluster_seq = 1UL; current_cluster_seq < current_cluster->length(); current_cluster_seq++) {
+                            unsigned long csi = current_cluster->value(current_cluster_seq);
+                            double d = computeTN93(test_sequence, stringText(sequences, seqLengths, csi), firstSequenceLength, resolutionOption, false, args.overlap, NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq2], &sequence_descriptors[csi]);
+                            if (d < 0. || d > args.distance) {
+                                throw (0);
+                            }
+                        }
+                    } else {
+                        throw (0);
+                    }
+                    current_cluster->appendValue(seq2);
+                    //cerr << "removing " << seq2 << endl;
+                    inner_iterator = remaining.erase (inner_iterator);
+                } catch (int e) {
+                    inner_iterator++;
                 }
-              }
-            
-            
-            double thisD = sequence_descriptors ? computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, &(histogram_counts[which_bin][0]), HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count, 1L, &sequence_descriptors[mapped_id], &sequence_descriptors[mapped_id2]):
-                                                 computeTN93(s1, stringText(sequences, seqLengths, mapped_id2), firstSequenceLength, resolutionOption, randFlag, args.overlap, &(histogram_counts[which_bin][0]), HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count);
-
-              if (thisD >= -1.e-10 && thisD <= args.distance) {
-                  local_links_found += weighted_count;
-                  //char *s2 = stringText(sequences, seqLengths, seq1);
-                  if (!args.do_count) {
-                      if (args.format == csv) {
-                          #pragma omp critical
-                          fprintf (args.output,"%s,%s,%g\n", n1, stringText (names, nameLengths, mapped_id2), thisD);
-                      } else {
-                          if (args.format == csvn) {
-                              #pragma omp critical
-                              fprintf (args.output,"%ld,%ld,%g\n", mapped_id, mapped_id2, thisD);
-
-                          } else {
-                              distanceMatrix[mapped_id*sequenceCount+mapped_id2] = thisD;
-                              distanceMatrix[mapped_id2*sequenceCount+mapped_id] = thisD;
-                          }
-                      }
-                  }
-              }
-              if (thisD <= -0.5) {
-                  compsSkipped += 1;
-              }
-              else {
-                  local_sum[which_bin] += thisD * (weighted_count);
-                  local_weighted[which_bin] += weighted_count;
-                  if (thisD > local_max[which_bin]) {
-                      local_max [which_bin] = thisD;
-                  }
-              }
-
-
-          }
-          #pragma omp critical
-          {
-              pairIndex += (args.input2 == NULL || do_fst) ? (sequenceCount - seq1 - 1) : seqLengthInFile2;
-              foundLinks          += local_links_found;
-              skipped_comparisons += compsSkipped;
-              for (int idx = 0; idx < 3; idx++) {
-                if (local_max[idx] > max[idx]) {
-                    max [idx] = local_max [idx];
-                }
-                mean [idx] += local_sum [idx];
-                weighted_counts [idx]+= local_weighted[idx];
-              }
-          }
-           
-
-          if (! args.quiet && (pairIndex * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1))
-          {
-              #pragma omp critical
-              {
-              time (&after);
-              percentDone = pairIndex * 100. / pairwise;
-              cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:" 
-                   << setw (8) << percentDone << "% (" << setw(8) << foundLinks << " links found, "
-                   << setw (12) << std::setprecision(3) << pairIndex/difftime (after,before) << " evals/sec)";
-              
-              after = before;
-              }
-          }
-      }
-      #pragma omp critical
-      {
-        for (unsigned long r = 0; r < 3; r++) {
-          for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
-            global_hist[r][k] += histogram_counts[r][k];
-          }
-        }
-      }
-      
-    }
-
-    if (args.do_count == false && args.format == hyphy)
-    {
-        fprintf (args.output, "{");
-        for (unsigned long seq1 = 0; seq1 < sequenceCount; seq1 ++)
-        {
-            fprintf (args.output, "\n{%g", distanceMatrix[seq1*sequenceCount]);
-            for (unsigned long seq2 = 1; seq2 < sequenceCount; seq2++)
-            {
-                fprintf (args.output, ",%g", distanceMatrix[seq1*sequenceCount+seq2]);
+                
             }
-            fprintf (args.output, "}");
-        }
-        fprintf (args.output, "\n}");
-
-        delete [] distanceMatrix;
-    }
-
-    cerr << endl;
-    
-    ostream * outStream = &cout;
-    
-    if (args.output == stdout) {
-      outStream = &cerr;
-    }
-    
-    (*outStream) << "{" << endl << '\t' << "\"Actual comparisons performed\" :" << pairwise-skipped_comparisons << ',' << endl;
-    (*outStream) << "\t\"Comparisons accounting for copy numbers \" :" << (weighted_counts[0] + weighted_counts[1] + weighted_counts[2]) << ',' << endl;
-    (*outStream) << "\t\"Total comparisons possible\" : " << pairwise << ',' << endl;
-    (*outStream) << "\t\"Links found\" : " << foundLinks << ',' << endl;
-    (*outStream) << "\t\"Maximum distance\" : " << max[0] << ',' << endl;
-    if (do_fst) {
-      const char * keys [4] = {"File 1", "File 2", "Between", "Combined"};
-      for (unsigned long k = 0; k < 3; k++) {
-        (*outStream) << "\t\"Mean distance " << keys[k] << "\" : " << mean[k]/weighted_counts[k] << ',' << endl;
-      }
-      double meta = (mean[0]+mean[1]+mean[2])/(weighted_counts[0]+weighted_counts[1]+weighted_counts[2]),
-             intra_pop =(mean[0]+mean[1])/(weighted_counts[0] + weighted_counts[1]),
-             pi_D = mean[2]/weighted_counts[2] - intra_pop;
-      
-      (*outStream) << "\t\"Mean distance [intra] "  << "\" : " << intra_pop << ',' << endl;
-      (*outStream) << "\t\"Mean distance [combined]"  << "\" : " << meta << ',' << endl;
-      (*outStream) << "\t\"F_ST\" : " << pi_D/(intra_pop+pi_D) << ',' << endl;
-      
-      for (unsigned long k = 0; k < 3; k++) {
-        dump_histogram (outStream, keys[k], &(global_hist[k][0]));
-        (*outStream) << ',' << endl;
-      }
-      for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {
-        global_hist[0][k] += global_hist[1][k] + global_hist[2][k];
-      }
-      dump_histogram (outStream, keys[3], global_hist[0]);
+            
+            outer_iterator = remaining.begin();
+            if (!args.quiet) {
+                time (&after);
+                percentDone = (sequenceCount-remaining.size()) * 100. / sequenceCount;
+                cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:"
+                << setw (8) << percentDone << "% (" << setw(8) << clusters.size() << " clusters created, "
+                << setw (12) << std::setprecision(3) << ((double)sequenceCount-remaining.size())/difftime (after,before) << " sequences clustered/sec)";
+                
+                after = before;
+            }
+       }
     } else {
-      (*outStream) << "\t\"Mean distance\" : " << mean[0]/weighted_counts[0] << ',' << endl;
-      dump_histogram (outStream, NULL, global_hist[0]);
+        auto outer_iterator = remaining.begin();
+        
+        // the idea here is to first iterate over all existing clusters
+        // if the remaining sequence can be joined to some of the clusters,
+        // then these clusters will be joined together and augmented with the new sequence
+        
+        // failing that, the new sequence gets its own cluster
+        
+        while (outer_iterator != remaining.end()) {
+            
+            unsigned long seq1 = *outer_iterator;
+            char  *base_sequence  = stringText(sequences, seqLengths, seq1);
+            
+            clusters.remove_blanks();
+            
+            set <unsigned long> join_to;
+            
+            outer_iterator = remaining.erase (outer_iterator);
+            
+            for (unsigned long cc = 0UL; cc < clusters.size(); cc++) {
+                Vector const * this_cluster = clusters[cc];
+                
+                try {
+                    for (unsigned long seq = 0UL; seq < this_cluster->length(); seq ++) {
+                        unsigned long csi = this_cluster->value(seq);
+                        double d = computeTN93(base_sequence, stringText(sequences, seqLengths, csi), firstSequenceLength, resolutionOption, false, args.overlap, NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq1], &sequence_descriptors[csi]);
+                        if (d >= 0. && d <= args.distance) {
+                            throw (0);
+                        }
+                    }
+                } catch (int e) {
+                    join_to.insert (cc);
+                }
+            }
+            
+            if (join_to.empty()) {
+                // create new cluster
+                clusters.append_a_cluster(seq1);
+                
+            } else {
+                auto cluster_iterator = join_to.begin();
+                unsigned long first = *cluster_iterator;
+                clusters[first]->appendValue(seq1);
+                cluster_iterator++;
+                while (cluster_iterator != join_to.end()) {
+                    //cout << "Merging " << first << " and " << *cluster_iterator << " on " << seq1 << endl;
+                    clusters.merge_clusters(first, *cluster_iterator);
+                    cluster_iterator++;
+                }
+            }
+            
+            outer_iterator = remaining.begin();
+            if (!args.quiet) {
+                time (&after);
+                percentDone = (sequenceCount-remaining.size()) * 100. / sequenceCount;
+                cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress:"
+                << setw (8) << percentDone << "% (" << setw(8) << clusters.size() << " clusters created, "
+                << setw (12) << std::setprecision(3) << ((double)sequenceCount-remaining.size())/difftime (after,before) << " sequences clustered/sec)";
+                
+                after = before;
+            }
+        }
+        
     }
-    (*outStream) << '}' << endl;
-  
-    if (args.do_count) {
-        fprintf (args.output, "Found %ld links among %ld pairwise comparisons\n", foundLinks, pairwise-skipped_comparisons);
+    
+    if (!args.quiet) {
+        cerr << endl;
     }
-
-    if (randFlag)
-        delete [] randFlag;
-
-    if (randSeqs)
-        delete [] randSeqs;
-    else
-        delete [] sequence_descriptors;
-
+    clusters.remove_blanks();
+    
+    if (args.output_mode == json) {
+        FILE   * print_to;
+        
+        if (args.trunk_path) {
+            print_to = fopen (args.trunk_path, "w");
+            if (!print_to) {
+                cerr << "Failed to open '" << args.trunk_path << "' for writing" << endl;
+                exit (0);
+            }
+        } else {
+            print_to = stdout;
+        }
+        
+        fprintf (print_to, "[");
+        for (unsigned long cid = 0; cid < clusters.size(); cid++) {
+            Vector * this_cluster = clusters[cid];
+            if (cid) {
+                fprintf (print_to, ",");
+            }
+            
+            unsigned long max_nongap = 0UL, max_id = 0UL;
+            
+            fprintf (print_to, "\n\t{\n\t\t\"size\" : %ld, \n\t\t\"members\" : [", this_cluster->length ());
+            for (unsigned long p = 0; p < this_cluster->length(); p++) {
+                fprintf (print_to, p ? ",\"%s\"" : "\"%s\"" , stringText (names, nameLengths, this_cluster->value (p)));
+                unsigned char * s = (unsigned char *)stringText (sequences, seqLengths, this_cluster->value (p));
+                unsigned long my_non_gap = 0UL;
+                for (unsigned long ci = 0; ci < firstSequenceLength; ci ++) {
+                    if (resolutionsCount [s[ci]] == 1.f) {
+                        my_non_gap ++;
+                    }
+                }
+                if (my_non_gap > max_nongap){
+                    max_nongap = my_non_gap;
+                    max_id = this_cluster->value (p);
+                }
+            }
+            fprintf (print_to, "],\n\t\t\"centroid\" : \"");
+            dump_sequence_fasta (max_id, print_to, firstSequenceLength);
+            fprintf (print_to, "\"\n\t}");
+            
+        }
+        fprintf (print_to, "\n]\n");
+ 
+        
+        if (args.trunk_path) {
+            fclose (print_to);
+        }
+        
+    } else {
+        char * path_buffer = NULL;
+        unsigned long pl = 0UL;
+        if (args.trunk_path) {
+            pl = strlen (args.trunk_path) + 128;
+            path_buffer = new char [pl];
+        }
+        for (unsigned long cid = 0; cid < clusters.size(); cid++) {
+            Vector * this_cluster = clusters[cid];
+            
+            FILE   * print_to;
+            
+            if (args.trunk_path) {
+                snprintf (path_buffer, pl, "%s.%lu", args.trunk_path, cid);
+                //cout << path_buffer << endl;
+                print_to = fopen (path_buffer, "w");
+                if (!print_to) {
+                    cerr << "Failed to open '" << path_buffer << "' for writing" << endl;
+                    exit (0);
+                }
+            } else {
+                print_to = stdout;
+                cout << endl << "============================" << endl;
+            }
+            for (unsigned long p = 0; p < this_cluster->length(); p++) {
+                long mapped_id = this_cluster->value(p);
+                //cout << mapped_id << endl;
+                dump_sequence_fasta (mapped_id, print_to, firstSequenceLength);
+            }
+            
+            if (args.trunk_path) {
+                fclose (print_to);
+            }
+        }
+    }
+    
+    delete [] sequence_descriptors;
     return 0;
-
+    
 }
 

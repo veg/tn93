@@ -86,6 +86,7 @@ public:
     ~Vector			(void);
 
     void					appendValue		(const long);
+    void					appendVector	(const Vector&);
     long                    extractMin      (VectorDouble&);
     void					resetVector		(void);
     void					remove          (const unsigned long);

@@ -142,6 +142,13 @@ void Vector::appendValue (const long l)
 
 /*---------------------------------------------------------------------------------------------------- */
 
+void Vector::appendVector (const Vector & v) {
+    for (unsigned long k = 0UL; k < v.vLength; k++) {
+        appendValue(v.vData[k]);
+    }
+}
+/*---------------------------------------------------------------------------------------------------- */
+
 void Vector::storeValue (const long v, const unsigned long l)
 {
     long addThis;
