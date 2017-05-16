@@ -269,13 +269,13 @@ int main (int argc, const char * argv[]) {
                 char  *test_sequence  = stringText(sequences, seqLengths, seq2);
 
                 try {
-                    double distance = computeTN93(base_sequence, test_sequence, firstSequenceLength, resolutionOption, false, args.overlap, NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq1], &sequence_descriptors[seq2]);
+                    double distance = computeTN93(base_sequence, test_sequence, firstSequenceLength, resolutionOption, NULL, args.overlap, NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq1], &sequence_descriptors[seq2]);
                     
                     if (distance <= args.distance) {
                         // check if this can be merged into the current cluster
                         for (unsigned long current_cluster_seq = 1UL; current_cluster_seq < current_cluster->length(); current_cluster_seq++) {
                             unsigned long csi = current_cluster->value(current_cluster_seq);
-                            double d = computeTN93(test_sequence, stringText(sequences, seqLengths, csi), firstSequenceLength, resolutionOption, false, args.overlap, NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq2], &sequence_descriptors[csi]);
+                            double d = computeTN93(test_sequence, stringText(sequences, seqLengths, csi), firstSequenceLength, resolutionOption, NULL, args.overlap, NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq2], &sequence_descriptors[csi]);
                             if (d < 0. || d > args.distance) {
                                 throw (0);
                             }
@@ -326,18 +326,20 @@ int main (int argc, const char * argv[]) {
             
             outer_iterator = remaining.erase (outer_iterator);
             
+#pragma omp parallel shared(clusters, sequence_descriptors, resolutionOption,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, percentDone,cerr)
             for (unsigned long cc = 0UL; cc < clusters.size(); cc++) {
                 Vector const * this_cluster = clusters[cc];
                 
                 try {
                     for (unsigned long seq = 0UL; seq < this_cluster->length(); seq ++) {
                         unsigned long csi = this_cluster->value(seq);
-                        double d = computeTN93(base_sequence, stringText(sequences, seqLengths, csi), firstSequenceLength, resolutionOption, false, args.overlap, NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq1], &sequence_descriptors[csi]);
+                        double d = computeTN93(base_sequence, stringText(sequences, seqLengths, csi), firstSequenceLength, resolutionOption, NULL, args.overlap, NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq1], &sequence_descriptors[csi]);
                         if (d >= 0. && d <= args.distance) {
                             throw (0);
                         }
                     }
                 } catch (int e) {
+#pragma omp critical
                     join_to.insert (cc);
                 }
             }
