@@ -118,6 +118,7 @@ namespace argparse
                 else if (  arg[1] == 'c')  parse_cluster ( next_arg (i, argc, argv) );
                 else if (  arg[1] == 'm')  parse_output_mode ( next_arg (i, argc, argv) );
                 else if (  arg[1] == 'g')  parse_fraction ( next_arg (i, argc, argv) );
+                else if (  arg[1] == 'l')  parse_overlap ( next_arg (i, argc, argv) );
                 else if (  arg[1] == 'q')  parse_quiet ( );
                 else
                     ERROR( "unknown argument: %s", arg );
@@ -197,6 +198,13 @@ namespace argparse
         resolve_fraction = atof( str );
         if ( resolve_fraction < 0.0 || resolve_fraction > 1.0)
             ERROR( "resolve ambigous fraction must be in [0,1], had: %s", str );
+    }
+    
+    void args_t::parse_overlap ( const char * str ){
+        overlap = atoi( str );
+        
+        if ( overlap == 0L )
+            ERROR( "overlap must be positive, had: %s", str );
     }
     
     void args_t::parse_ambig( const char * str ) {
