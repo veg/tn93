@@ -422,9 +422,10 @@ int main (int argc, const char * argv[]) {
                     max_id = this_cluster->value (p);
                 }
             }
-            fprintf (print_to, "],\n\t\t\"centroid\" : \"");
-            dump_sequence_fasta (max_id, print_to, firstSequenceLength);
-            fprintf (print_to, "\"\n\t}");
+            fprintf (print_to, "],\n\t\t\"centroid\" : \">%s\\n", stringText (names, nameLengths, max_id));
+            dump_fasta (stringText (sequences, seqLengths, max_id), firstSequenceLength, print_to, false);
+            //dump_sequence_fasta (max_id, print_to, firstSequenceLength);
+            fprintf (print_to, "\\n\"\n\t}");
             
         }
         fprintf (print_to, "\n]\n");

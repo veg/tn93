@@ -180,7 +180,7 @@ namespace argparse
         } else if (!strcmp (str, "any")) {
             cluster_type = any;
         } else  {
-            ERROR( "invalid ambiguity mode type: %s", str );
+            ERROR( "invalid cluster construction mode type: %s", str );
         }
     }
     
@@ -190,7 +190,7 @@ namespace argparse
         } else if (!strcmp (str, "files")) {
             output_mode = files;
         } else  {
-            ERROR( "invalid ambiguity mode type: %s", str );
+            ERROR( "invalid output format mode type: %s", str );
         }
     }
     
