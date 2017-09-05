@@ -29,6 +29,7 @@ namespace argparse
   "[-b] "
   "[-r] "
   "[-c] "
+  "[-0] "
   "[-q] "
   "[FASTA]\n";
   
@@ -67,6 +68,8 @@ namespace argparse
   "  -m                       compute inter- and intra-population means suitable for FST caclulations\n"
   "                           only applied when -s is used to provide a second file\n"
   "  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = " TO_STR ( DEFAULT_INCLUDE_PROB) ")\n"
+  "  -0                       report distances between each sequence and itself (as 0); this is useful to ensure every sequence"
+  "                           in the input file appears in the output, e.g. for network construction to contrast clustered/unclustered"
   "  -q                       do not report progress updates and other diagnostics to stderr \n"
   "  FASTA                    read sequences to compare from this file (default=stdin)\n";
   
@@ -119,6 +122,7 @@ namespace argparse
   do_count( false ),
   quiet( false ),
   do_fst( false ),
+  report_self ( false ),
   counts_in_name ( DEFAULT_COUNTS_IN_NAME ),
   include_prob( DEFAULT_INCLUDE_PROB ),
   ambigs_to_resolve(NULL),
@@ -150,6 +154,7 @@ namespace argparse
         else if (  arg[1] == 'c')  parse_count();
         else if (  arg[1] == 'q')  parse_quiet();
         else if (  arg[1] == 'm')  parse_fst();
+        else if (  arg[1] == '0')  parse_report_self();
         else if (  arg[1] == 'g')  parse_fraction( next_arg (i, argc, argv) );
         else
           ERROR( "unknown argument: %s", arg );
@@ -307,5 +312,9 @@ namespace argparse
   void args_t::parse_fst()
   {
     do_fst = true;
+  }
+  void args_t::parse_report_self()
+  {
+    report_self = true;
   }
 }

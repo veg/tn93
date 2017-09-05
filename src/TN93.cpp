@@ -100,6 +100,8 @@ int main (int argc, const char * argv[])
     }
 
     bool  do_fst = args.input2 && args.do_fst;
+    bool  report_self = args.input2 == NULL && args.report_self && args.do_count == false;
+  
     unsigned long sequenceCount = seqLengths.length()-1,
                   pairwise      = (args.input2 && !do_fst) ? seqLengthInFile2*seqLengthInFile1 : (sequenceCount-1) * (sequenceCount) / 2;
 
@@ -331,7 +333,7 @@ int main (int argc, const char * argv[])
   
     bool cross_comparison_only = (args.input2 && !do_fst);
 
-    #pragma omp parallel shared(skipped_comparisons, sequence_descriptors, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs, weighted_counts, do_fst, randomized_fst, randomized_idx, recounts, cross_comparison_only)
+    #pragma omp parallel shared(skipped_comparisons, sequence_descriptors, resolutionOption, foundLinks,pairIndex,sequences,seqLengths,sequenceCount,firstSequenceLength,args, nameLengths, names, pairwise, percentDone,cerr,max,randFlag,distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean, randSeqs, weighted_counts, do_fst, randomized_fst, randomized_idx, recounts, cross_comparison_only, report_self)
     
     {
     
@@ -360,16 +362,31 @@ int main (int argc, const char * argv[])
                local_sum [3] = {0., 0., 0.},
                local_weighted [3] = {0.,0.,0.};
         
-          if (!cross_comparison_only && instances1 > 1) {
+          if (!cross_comparison_only ) {
+              if (instances1 > 1) {
               // add zero distances for self vs self
-              unsigned long self_v_self = (instances1*(instances1-1L)) >> 1;
-              if (seq1 < seqLengthInFile1) {
-                local_weighted [0] += self_v_self;
-                histogram_counts[0][0] += self_v_self;
-              } else {
-                local_weighted [1] += self_v_self;
-                histogram_counts[1][0] += self_v_self;
+                unsigned long self_v_self = (instances1*(instances1-1L)) >> 1;
+                if (seq1 < seqLengthInFile1) {
+                  local_weighted [0] += self_v_self;
+                  histogram_counts[0][0] += self_v_self;
+                } else {
+                  local_weighted [1] += self_v_self;
+                  histogram_counts[1][0] += self_v_self;
+                }
               }
+              if (report_self) {
+                  // if this is a single file run and -0 selected, then report distance to self as 0
+                if (args.format == csv) {
+                  #pragma omp critical
+                  fprintf (args.output,"%s,%s,%g\n", n1,n1, 0.0);
+                } else {
+                  if (args.format == csvn) {
+                    #pragma omp critical
+                    fprintf (args.output,"%ld,%ld,%g\n", mapped_id, mapped_id, 0.0);
+                  }
+                }
+             }
+            
           }
 
           for (unsigned long seq2 = lowerBound; seq2 < sequenceCount; seq2 ++)
