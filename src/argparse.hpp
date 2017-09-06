@@ -51,6 +51,7 @@ namespace argparse
         bool            do_count;
         bool            quiet;
         bool            do_fst;
+        bool            report_self;
         char            counts_in_name;
         double          include_prob;
         char            *ambigs_to_resolve;
@@ -61,6 +62,7 @@ namespace argparse
         
     private:
         void parse_input    ( const char * );
+        void parse_report_self ( void );
         void parse_second_in( const char * );
         void parse_output   ( const char * );
         void parse_distance ( const char * );

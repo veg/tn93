@@ -551,6 +551,7 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
       totalNonGap   += pc;
       nucFreq [c1]  += pc;
       nucFreq [c2]  += pc;
+      
     }
   }
   

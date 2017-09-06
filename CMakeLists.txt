@@ -25,6 +25,14 @@ add_executable(
     src/argparse.cpp
 )
 
+add_executable(
+    tn93-cluster
+    src/cluster.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+    src/argparse_cluster.cpp
+)
+
 
 add_executable(
     seqcoverage
@@ -86,6 +94,12 @@ if (${OPENMP_FOUND})
 		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
 	)
 	set_target_properties(
+		tn93-cluster
+		PROPERTIES
+		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
+		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
+	)
+	set_target_properties(
 		selectreads
 		PROPERTIES
 		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
@@ -118,6 +132,12 @@ install(
 )
 
 install(
+    TARGETS tn93-cluster
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
+install(
     TARGETS selectreads
 	RUNTIME DESTINATION bin
 	OPTIONAL
@@ -135,7 +155,7 @@ install(
 	OPTIONAL
 )
 
-add_custom_target(TN93 
+add_custom_target(TN93
 	DEPENDS tn93
 )
 

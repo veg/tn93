@@ -78,6 +78,7 @@ extern Vector       nameLengths,
        nodeParents;
 
 extern VectorDouble distanceEstimates;
+extern const  double  resolutionsCount [];
 
 
 #endif
