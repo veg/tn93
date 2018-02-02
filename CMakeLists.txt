@@ -80,7 +80,7 @@ add_executable(
 )
 
 #set(DEFAULT_COMPILE_FLAGS "-O3 -march=native -g -mveclibabi=svml -mstringop-strategy=vector_loop -Wa,-q")
-set(DEFAULT_COMPILE_FLAGS "-O3 -std=c++14")
+set(DEFAULT_COMPILE_FLAGS "-O3 -std=c++11")
 
 set(DEFAULT_LINK_FLAGS "${DEFAULT_COMPILE_FLAGS}")
 
