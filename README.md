@@ -58,6 +58,10 @@ ARGUMENTS
                                skip: do not include sites with ambiguous nucleotides in distance calculations;
                                gapmm: a gap ('-') matched to anything other than another gap is like matching an N (4-fold ambig) to it;
                                a string (e.g. RY): any ambiguity in the list is RESOLVED; any ambiguitiy NOT in the list is averaged (LIST-NOT LIST will also be averaged);
+      -g FRACTION              in combination with AMBIGS, works to limit (for resolve and string options to AMBIG)
+                               the maximum tolerated FRACTION of ambiguous characters; sequences whose pairwise comparisons
+                               include no more than FRACTION [0,1] of sites with resolvable ambiguities will be resolved
+                               while all others will be AVERAGED (default=1.0)
       -f FORMAT                controls the format of the output unless -c is set (default=csv)
                                csv: seqname1, seqname2, distance;
                                csvn: 1, 2, distance;
@@ -67,10 +71,15 @@ ARGUMENTS
                                when computing distance histograms (a character, default=':'):
       -s SECOND_FASTA          if specified, read another FASTA file from SECOND_FASTA and perform pairwise comparison BETWEEN the files (default=NULL)
       -b                       bootstrap alignment columns before computing distances (default = false)
-                               when -s is supplied, permutes the assigment of sequences to files
+                               when -s is supplied, permutes the assigment of sequences to file
+      -r                       if -b is specified AND -s is supplied, using -r will bootstrap across sites
+                               instead of allocating sequences to 'compartments' randomly
       -c                       only count the pairs below a threshold, do not write out all the pairs 
       -m                       compute inter- and intra-population means suitable for FST caclulations
-                               only applied when -s is used to provide a second file  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = 1.0)
+                               only applied when -s is used to provide a second file  
+      -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = 1.0) 
+      -0                       report distances between each sequence and itself (as 0); this is useful to ensure every sequence
+                               in the input file appears in the output, e.g. for network construction to contrast clustered/unclustered
       -q                       do not report progress updates and other diagnostics to stderr 
       FASTA                    read sequences to compare from this file (default=stdin)
 

@@ -68,8 +68,8 @@ namespace argparse
   "  -m                       compute inter- and intra-population means suitable for FST caclulations\n"
   "                           only applied when -s is used to provide a second file\n"
   "  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = " TO_STR ( DEFAULT_INCLUDE_PROB) ")\n"
-  "  -0                       report distances between each sequence and itself (as 0); this is useful to ensure every sequence"
-  "                           in the input file appears in the output, e.g. for network construction to contrast clustered/unclustered"
+  "  -0                       report distances between each sequence and itself (as 0); this is useful to ensure every sequence\n"
+  "                           in the input file appears in the output, e.g. for network construction to contrast clustered/unclustered\n"
   "  -q                       do not report progress updates and other diagnostics to stderr \n"
   "  FASTA                    read sequences to compare from this file (default=stdin)\n";
   
