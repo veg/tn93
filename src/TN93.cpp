@@ -523,6 +523,14 @@ int main(int argc, const char *argv[]) {
                << endl;
   (*outStream) << "\t\"Links found\" : " << foundLinks << ',' << endl;
   (*outStream) << "\t\"Maximum distance\" : " << max[0] << ',' << endl;
+  
+  if (args.input2 == NULL) {
+      (*outStream) << "\t\"Sequences\" : " << sequenceCount << ',' << endl;
+  } else {
+      (*outStream) << "\t\"Sequences in first file\" : " << seqLengthInFile1 << ',' << endl;
+      (*outStream) << "\t\"Sequences in second file\" : " << seqLengthInFile2 << ',' << endl;
+  }
+  
   if (do_fst) {
     const char *keys[4] = {"File 1", "File 2", "Between", "Combined"};
     for (unsigned long k = 0; k < 3; k++) {
