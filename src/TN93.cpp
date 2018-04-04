@@ -323,6 +323,7 @@ int main(int argc, const char *argv[]) {
   */
 
   bool cross_comparison_only = (args.input2 && !do_fst);
+  unsigned long system_CPU_count = omp_get_max_threads();
 
 #pragma omp parallel shared(                                                   \
     skipped_comparisons, sequence_descriptors, resolutionOption, foundLinks,   \
@@ -330,7 +331,7 @@ int main(int argc, const char *argv[]) {
     args, nameLengths, names, pairwise, percentDone, cerr, max, randFlag,      \
     distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean,      \
     randSeqs, weighted_counts, do_fst, randomized_fst, randomized_idx,         \
-    recounts, cross_comparison_only, report_self)
+    recounts, cross_comparison_only, report_self) 
 
   {
 
@@ -341,8 +342,9 @@ int main(int argc, const char *argv[]) {
       }
     }
 
-#pragma omp for schedule(dynamic)
+#pragma omp for schedule(guided)
     for (long seq1 = 0; seq1 < upperBound; seq1++) {
+      
       long mapped_id = randomized_fst ? randomized_idx.value(seq1)
                                       : (randSeqs ? randSeqs[seq1] : seq1);
 
@@ -402,6 +404,8 @@ int main(int argc, const char *argv[]) {
           }
         }
 
+
+
         double thisD =
             sequence_descriptors
                 ? computeTN93(s1, stringText(sequences, seqLengths, mapped_id2),
@@ -415,6 +419,7 @@ int main(int argc, const char *argv[]) {
                               args.overlap, &(histogram_counts[which_bin][0]),
                               HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count);
 
+       
         if (thisD >= -1.e-10 && thisD <= args.distance) {
           local_links_found += weighted_count;
           // char *s2 = stringText(sequences, seqLengths, seq1);
@@ -488,7 +493,7 @@ int main(int argc, const char *argv[]) {
         }
       }
     }
-  }
+  } // end of the parallel loop
 
   if (args.do_count == false && args.format == hyphy) {
     fprintf(args.output, "{");
