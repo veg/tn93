@@ -41,8 +41,8 @@ Example:
 
 DEPENDENCIES
 ------------
-gcc >= 5.0.0
-cmake >= 3.0.0
+* gcc >= 5.0.0
+* cmake >= 3.0.0
 
 ARGUMENTS
 ---------
