@@ -330,7 +330,7 @@ int main(int argc, const char *argv[]) {
     args, nameLengths, names, pairwise, percentDone, cerr, max, randFlag,      \
     distanceMatrix, upperBound, seqLengthInFile1, seqLengthInFile2, mean,      \
     randSeqs, weighted_counts, do_fst, randomized_fst, randomized_idx,         \
-    recounts, cross_comparison_only, report_self)
+    recounts, cross_comparison_only, report_self) 
 
   {
 
@@ -341,8 +341,9 @@ int main(int argc, const char *argv[]) {
       }
     }
 
-#pragma omp for schedule(dynamic)
+#pragma omp for schedule(guided)
     for (long seq1 = 0; seq1 < upperBound; seq1++) {
+      
       long mapped_id = randomized_fst ? randomized_idx.value(seq1)
                                       : (randSeqs ? randSeqs[seq1] : seq1);
 
@@ -402,6 +403,8 @@ int main(int argc, const char *argv[]) {
           }
         }
 
+
+
         double thisD =
             sequence_descriptors
                 ? computeTN93(s1, stringText(sequences, seqLengths, mapped_id2),
@@ -415,6 +418,7 @@ int main(int argc, const char *argv[]) {
                               args.overlap, &(histogram_counts[which_bin][0]),
                               HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count);
 
+       
         if (thisD >= -1.e-10 && thisD <= args.distance) {
           local_links_found += weighted_count;
           // char *s2 = stringText(sequences, seqLengths, seq1);
@@ -488,7 +492,7 @@ int main(int argc, const char *argv[]) {
         }
       }
     }
-  }
+  } // end of the parallel loop
 
   if (args.do_count == false && args.format == hyphy) {
     fprintf(args.output, "{");
@@ -523,6 +527,14 @@ int main(int argc, const char *argv[]) {
                << endl;
   (*outStream) << "\t\"Links found\" : " << foundLinks << ',' << endl;
   (*outStream) << "\t\"Maximum distance\" : " << max[0] << ',' << endl;
+  
+  if (args.input2 == NULL) {
+      (*outStream) << "\t\"Sequences\" : " << sequenceCount << ',' << endl;
+  } else {
+      (*outStream) << "\t\"Sequences in first file\" : " << seqLengthInFile1 << ',' << endl;
+      (*outStream) << "\t\"Sequences in second file\" : " << seqLengthInFile2 << ',' << endl;
+  }
+  
   if (do_fst) {
     const char *keys[4] = {"File 1", "File 2", "Between", "Combined"};
     for (unsigned long k = 0; k < 3; k++) {
