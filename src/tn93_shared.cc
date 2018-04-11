@@ -360,8 +360,11 @@ long perfect_match (const char* source, char* target, const long sequence_length
 struct sequence_gap_structure describe_sequence (const char* source, const unsigned long sequence_length, const unsigned long char_count) {
   sequence_gap_structure result;
   
-  unsigned long start_run = sequence_length + 1UL,
-                end_run = 0L;
+  long start_run = sequence_length + 1UL,
+       end_run = 0L;
+  
+  result.resolved_end = end_run;
+  result.resolved_start = start_run;
   
   for (unsigned long char_idx = 0UL; char_idx < sequence_length; char_idx++) {
     unsigned long this_char = source[char_idx];
@@ -397,6 +400,10 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
       result.resolved_end = end_run;
     }
   }
+  
+  //cout << sequence_length << "/" << char_count << endl << result.first_nongap << "," 
+  //     << result.last_nongap << " : " << result.resolved_start << "," << result.resolved_end << endl;
+  
   return result;
 }
 
@@ -432,12 +439,17 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
     
     if (sequence_descriptor1 && sequence_descriptor2 && matchMode != GAPMM) {
       
+      
+//#pragma omp critical      
+//      cout << "HERE" << endl;
+     
+      
       unsigned long first_nongap = MAX  (sequence_descriptor1->first_nongap,   sequence_descriptor2->first_nongap),
                     last_nongap  = MIN  (sequence_descriptor1->last_nongap,    sequence_descriptor2->last_nongap),
                     span_start   = MAX  (sequence_descriptor1->resolved_start, sequence_descriptor2->resolved_start),
                     span_end     = MIN  (sequence_descriptor1->resolved_end,    sequence_descriptor2->resolved_end);
-      
-      //cout << first_nongap << " " << last_nongap << " " << span_start << " " << span_end << endl;
+//#pragma omp critical      
+//      cout << first_nongap << " " << last_nongap << " " << span_start << " " << span_end << endl;
       
       
       if (span_start > span_end) {
