@@ -323,7 +323,6 @@ int main(int argc, const char *argv[]) {
   */
 
   bool cross_comparison_only = (args.input2 && !do_fst);
-  unsigned long system_CPU_count = omp_get_max_threads();
 
 #pragma omp parallel shared(                                                   \
     skipped_comparisons, sequence_descriptors, resolutionOption, foundLinks,   \
