@@ -10,8 +10,8 @@ To build, you need to use cmake. Type
 ```
 git clone https://github.com/veg/tn93.git
 cd tn93
-$cmake .
-$make install
+cmake .
+make install
 ```
 
 Note, you can use :
