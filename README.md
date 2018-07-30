@@ -7,7 +7,8 @@ nucleotide sequences in sequential FASTA format using the
 
 
 To build, you need to use cmake. Type 
-
+	git clone https://github.com/veg/tn93.git
+	cd tn93
 	$cmake [-DCMAKE_INSTALL_PREFIX=/install/path DEFAULT /usr/local/] ./
 	$make install
 
