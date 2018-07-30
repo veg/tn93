@@ -18,7 +18,7 @@ Note, you can use :
 
 `cmake [-DCMAKE_INSTALL_PREFIX=/install/path DEFAULT /usr/local/] ./`
 
-To set a different install path
+to set a different install path.
 
 If the compiler supports OpenMP, the program will be built with multithreaded
 support.
