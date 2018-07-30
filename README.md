@@ -10,9 +10,15 @@ To build, you need to use cmake. Type
 ```
 git clone https://github.com/veg/tn93.git
 cd tn93
-$cmake [-DCMAKE_INSTALL_PREFIX=/install/path DEFAULT /usr/local/] ./	
+$cmake .
 $make install
 ```
+
+Note, you can use :
+
+`cmake [-DCMAKE_INSTALL_PREFIX=/install/path DEFAULT /usr/local/] ./`
+
+To set a different install path
 
 If the compiler supports OpenMP, the program will be built with multithreaded
 support.
