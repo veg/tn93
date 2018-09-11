@@ -26,7 +26,7 @@ namespace argparse
     "[-g FRACTION] "
     "[-q] "
     "[FASTA]\n";
-    
+
     const char help_msg[] =
     "read a FASTA MSA and (greedy) cluster sequences that lie within a specific distance of each other\n"
     "\n"
@@ -61,15 +61,16 @@ namespace argparse
     "                           the maximum tolerated FRACTION of ambiguous characters; sequences whose pairwise comparisons\n"
     "                           include no more than FRACTION [0,1] of sites with resolvable ambiguities will be resolved\n"
     "                           while all others will be AVERAGED (default = " TO_STR ( DEFAULT_FRACTION ) ")\n"
+    "  -f FIRST                 treat first sequence as regular sequence (default is to treat it as reference and skip)\n"
     "  -q QUIET                 do not print progress updates to stderr (default is to print)\n";
-    
+
     inline
     void help()
     {
         fprintf( stderr, "%s\n%s", usage, help_msg );
         exit( 1 );
     }
-    
+
     inline
     void ERROR( const char * msg, ... )
     {
@@ -81,16 +82,16 @@ namespace argparse
         fprintf( stderr, "\n" );
         exit( 1 );
     }
-    
+
     const char * next_arg (int& i, const int argc, const char * argv[]) {
         i++;
         if (i == argc)
             ERROR ("ran out of command line arguments");
-        
+
         return argv[i];
-        
+
     }
-    
+
     args_t::args_t( int argc, const char * argv[] ) :
     input( stdin ),
     ambig( DEFAULT_AMBIG ),
@@ -100,11 +101,12 @@ namespace argparse
     quiet (false),
     ambigs_to_resolve (NULL),
     trunk_path (NULL),
-    resolve_fraction ( DEFAULT_FRACTION ) {
+    resolve_fraction ( DEFAULT_FRACTION ),
+    first_regular (false) {
         // skip arg[0], it's just the program name
         for (int i = 1; i < argc; ++i ) {
             const char * arg = argv[i];
-            
+
             if ( arg[0] == '-' && arg[1] == '-' ) {
                 if ( !strcmp( &arg[2], "help" ) ) help();
                 else
@@ -120,6 +122,7 @@ namespace argparse
                 else if (  arg[1] == 'g')  parse_fraction ( next_arg (i, argc, argv) );
                 else if (  arg[1] == 'l')  parse_overlap ( next_arg (i, argc, argv) );
                 else if (  arg[1] == 'q')  parse_quiet ( );
+                else if (  arg[1] == 'f')  parse_first ( );
                 else
                     ERROR( "unknown argument: %s", arg );
             }
@@ -131,49 +134,49 @@ namespace argparse
                 }
         }
     }
-    
+
     args_t::~args_t() {
-        
+
         if (ambigs_to_resolve){
             delete [] ambigs_to_resolve;
         }
-        
+
         if (trunk_path) {
             delete [] trunk_path;
         }
-        
+
         if ( input && input != stdin)
             fclose (input);
-        
+
     }
-    
-    
+
+
     void args_t::parse_output( const char * str ) {
         if ( str && strcmp( str, "-" ) ) {
             trunk_path = new char [strlen (str) + 1];
             strcpy (trunk_path, str);
         }
     }
-    
+
     void args_t::parse_distance ( const char * str )
     {
         distance = atof( str );
-        
+
         if ( distance < 0.0 || distance > 1.0)
             ERROR( "genetic distance threshold must be in [0,1], had: %s", str );
     }
-    
+
     void args_t::parse_input( const char * str )
     {
         if ( str && strcmp( str, "-" ) )
             input = fopen( str, "rb" );
         else
             input = stdin;
-        
+
         if ( input == NULL )
             ERROR( "failed to open the INPUT file %s", str );
     }
-    
+
     void args_t::parse_cluster( const char * str ) {
         if (!strcmp (str, "all")) {
             cluster_type = all;
@@ -183,7 +186,7 @@ namespace argparse
             ERROR( "invalid cluster construction mode type: %s", str );
         }
     }
-    
+
     void args_t::parse_output_mode( const char * str ) {
         if (!strcmp (str, "json")) {
             output_mode = json;
@@ -193,20 +196,20 @@ namespace argparse
             ERROR( "invalid output format mode type: %s", str );
         }
     }
-    
+
     void args_t::parse_fraction ( const char * str ) {
         resolve_fraction = atof( str );
         if ( resolve_fraction < 0.0 || resolve_fraction > 1.0)
             ERROR( "resolve ambigous fraction must be in [0,1], had: %s", str );
     }
-    
+
     void args_t::parse_overlap ( const char * str ){
         overlap = atoi( str );
-        
+
         if ( overlap == 0L )
             ERROR( "overlap must be positive, had: %s", str );
     }
-    
+
     void args_t::parse_ambig( const char * str ) {
         if (!strcmp (str, "resolve")) {
             ambig = resolve;
@@ -222,9 +225,14 @@ namespace argparse
             strcpy (ambigs_to_resolve, str);
         }
     }
-    
-    
+
+
     void args_t::parse_quiet ( void ) {
         quiet = true;
     }
+
+    void args_t::parse_first ( void ) {
+        first_regular = true;
+    }
+
 }

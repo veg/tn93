@@ -206,7 +206,7 @@ int main(int argc, const char *argv[]) {
   for (unsigned long sid = 0UL; sid < sequenceCount; sid++) {
     sequence_descriptors[sid] = describe_sequence(
         stringText(sequences, seqLengths, sid), firstSequenceLength);
-    if (sid > 0UL) {
+    if (args.first_regular || sid > 0UL) {
       remaining.insert(sid);
     }
   }

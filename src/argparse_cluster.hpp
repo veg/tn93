@@ -17,7 +17,7 @@
 #endif
 
 namespace argparse {
-  
+
   enum ambig_t {
     resolve,
     average,
@@ -25,22 +25,22 @@ namespace argparse {
     gapmm,
     subset
   };
-  
+
   enum cluster_t {
     all,
     any
   };
-  
+
   enum output_t {
     json,
     files
   };
-  
+
   class args_t {
   public:
-    
+
     FILE            * input;
-    
+
     double          distance;
     ambig_t         ambig;
     cluster_t       cluster_type;
@@ -50,10 +50,11 @@ namespace argparse {
     char            *ambigs_to_resolve;
     char            *trunk_path;
     double          resolve_fraction;
-    
+    bool            first_regular;
+
     args_t( int, const char ** );
     ~args_t();
-    
+
   private:
     void parse_input    ( const char * );
     void parse_output   ( const char * );
@@ -64,7 +65,8 @@ namespace argparse {
     void parse_quiet    ( void );
     void parse_fraction ( const char *);
     void parse_cluster  ( const char *);
-    
+    void parse_first    (void);
+
   };
 }
 
