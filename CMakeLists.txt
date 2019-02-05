@@ -79,6 +79,14 @@ add_executable(
     src/tn93_shared.cc
 )
 
+add_executable(
+    fasta_diff
+    src/fasta_diff.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+    src/argparse_fasta_diff.cpp
+)
+
 #set(DEFAULT_COMPILE_FLAGS "-O3 -march=native -g -mveclibabi=svml -mstringop-strategy=vector_loop -Wa,-q")
 set(DEFAULT_COMPILE_FLAGS "-O3 -std=c++11")
 
@@ -123,6 +131,14 @@ if (${OPENMP_FOUND})
 		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
 		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
     )
+
+	set_target_properties(
+		fasta_diff
+		PROPERTIES
+		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
+		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
+    )
+
 endif (${OPENMP_FOUND})
 
 install(
@@ -151,6 +167,12 @@ install(
 
 install(
     TARGETS readreduce
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
+install(
+    TARGETS fasta_diff
 	RUNTIME DESTINATION bin
 	OPTIONAL
 )

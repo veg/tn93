@@ -2,7 +2,7 @@
         if (c1 < 4UL) { // c1 resolved and c2 is not
           if (matchMode != SKIP) {
             if (resolutionsCount[c2] > 0.) {
-              if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c2])
+              if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c2]))
                 if (resolutions[c2][c1]) {
                   ambig_count ++;
                   pairwiseCounts[c1][c1] += 1.;
@@ -24,7 +24,7 @@
           if (matchMode != SKIP) {
             if (c2 < 4UL) { // c2 resolved an c1 is not
               if (resolutionsCount[c1] > 0.) {
-                if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c1]) {
+                if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c1])) {
                   if (resolutions[c1][c2]) {
                     ambig_count ++;
                     pairwiseCounts[c2][c2] += 1.;
@@ -46,7 +46,7 @@
               double norm = resolutionsCount[c1] * resolutionsCount[c2];
               //cout << int(c1) << ":" << int(c2) << "/" << norm << endl;
               if (norm > 0.0) {
-                if (matchMode == RESOLVE || matchMode == SUBSET && resolveTheseAmbigs[c1] && resolveTheseAmbigs[c2]) {
+                if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c1] && resolveTheseAmbigs[c2])) {
                   ambig_count ++;
                   long matched_count = 0L,
                   positive_match [4] = {0,0,0,0};

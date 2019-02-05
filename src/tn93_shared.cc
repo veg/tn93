@@ -175,25 +175,36 @@ char validFlags [256];
 
   //---------------------------------------------------------------
 
-void initAlphabets (bool doAminoAcid, char * resolutionSubset) {
+void initAlphabets (bool doAminoAcid, char * resolutionSubset, bool id_map) {
   for (int i = 0; i < 256; i++)
     validFlags [i] = -1;
   
   if (doAminoAcid) {
-    for (unsigned int i = 0; i < strlen (ValidCharsAA); i++)
-      validFlags [(unsigned char)ValidCharsAA[i]] = i;
+    if (id_map) {
+        for (unsigned int i = 0; i < strlen (ValidCharsAA); i++)
+          validFlags [(unsigned char)ValidCharsAA[i]] = (unsigned char)ValidCharsAA[i];
+    } else {
+        for (unsigned int i = 0; i < strlen (ValidCharsAA); i++)
+            validFlags [(unsigned char)ValidCharsAA[i]] = i;
+
+    }
     
     
   } else {  
-     for (unsigned int i = 0; i < strlen (ValidChars); i++)
-      validFlags [(unsigned char)ValidChars[i]] = i;
+     if (id_map) {
+         for (unsigned int i = 0; i < strlen (ValidChars); i++)
+          validFlags [(unsigned char)ValidChars[i]] = (unsigned char)ValidChars[i];
+     } else {
+         for (unsigned int i = 0; i < strlen (ValidChars); i++)
+             validFlags [(unsigned char)ValidChars[i]] = i;
+     }
       
     if (resolutionSubset) {
       unsigned long subset_length = strlen (resolutionSubset);
       for (unsigned long rc = 0; rc < subset_length; rc++) {
         unsigned char rcc = toupper( (resolutionSubset[rc]));
         if (validFlags[rcc] > 3) {
-          resolveTheseAmbigs[validFlags[rcc]] = 1;
+          resolveTheseAmbigs[(unsigned char)validFlags[rcc]] = 1;
         }
       }
     }
@@ -482,7 +493,7 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
         }
         
         for (unsigned long p = span_start; p <= span_end ; p++) {
-            pairwiseCounts [s1[p]][s2[p]] += 1.;
+            pairwiseCounts [(unsigned char)s1[p]][(unsigned char)s2[p]] += 1.;
         }
        
         for (unsigned long p = span_end + 1UL; p <= last_nongap; p++) {
@@ -685,146 +696,166 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
   } 
   
   bool include_me = true;
-  
-  while (1) {
-    int currentC = fgetc (F);
-      //cout << "State: " << int(automatonState) << "/'" << char(currentC) << "'" << endl;
-    if (feof (F))
-      break;
-    switch (automatonState) {
-      case 0: {
-        if (currentC == '>' || currentC == '#') {
-          automatonState = 1;
-          if (sequenceInstances == NULL && include_prob < 1.) {
-            include_me = genrand_int32() < up_to;
-          }
-        }
-        break;
-      }
-      case 1: {
-        if (currentC == '\n' || currentC == '\r') {
-          if (include_me) {
-              names.appendChar   ('\0');
- 
-            long this_name_l;
-            if (oneByOne) {
-              this_name_l = names.length ()-1;
-              
-            } else {
-              nameLengths.appendValue (names.length());
-              this_name_l = stringLength (nameLengths, nameLengths.length()-2);
-            }
-
-            
-            if (this_name_l <= 0) {
-              cerr << "Sequence names must be non-empty." << endl;
-              return 1;
-            }
-            automatonState = 2;
-
-            if (sequenceInstances) {
-                unsigned long count = 1L;
-               if (this_name_l >= 3) {
-                  long sep_loc = 0, ll = names.length();
-                  for (sep_loc = 2; sep_loc < this_name_l; sep_loc ++) {
-                    if (names.getChar(ll-sep_loc-1) == sep) {
-                      break;
-                    }
-                  }
-                  if (sep_loc < this_name_l) {
-                    count = atoi (names.getString() + (ll-sep_loc));
-                  }
-                  if (count < 1) {
-                    count = 1;
-                  }
-                  
-                  unsigned long resampled_prob = 0UL;
-                  
-                  if (include_prob < 1.) {
-                    for (long k = 0; k < count; k ++) {
-                      resampled_prob += genrand_int32() < up_to;
-                    }
-                  } else {
-                    resampled_prob = count;
-                  }
-                 
-                 //cerr << count << " -> " << resampled_prob << endl;
-                 
-                  if (resampled_prob == 0UL) {
-                    if (oneByOne) {
-                      names.resetString();
-                    } else {
-                      names.reset_length (nameLengths.value (nameLengths.length()-2));
-                    }
-                    nameLengths.remove(nameLengths.length()-1);
-                    include_me = false;
-                    continue;
-                  } else {
-                    count = resampled_prob;
-                  }
-                  
-                }
-                if (oneByOne) {
-                  sequenceInstances->resetVector();
-                }
-                sequenceInstances->appendValue(count);
-              }
-           }
-          
-            
-        }
-        else {
-          if (include_me) {
-            names.appendChar(currentC);
-          }
-        }
-        break;
-      }
-      case 2: {
-        currentC = toupper (currentC);
-        if (validFlags [currentC] >= 0) {
-          if (include_me)
-            //cout << "Append " << currentC << endl;
-            sequences.appendChar (validFlags [currentC]);
-        }
-        else {
-          if (currentC == '>' || currentC == '#') {
-            automatonState = 1;
-            if (include_me) {
-              if (oneByOne) {
-                if (firstSequenceLength == 0) {
-                  firstSequenceLength = sequences.length()-1;
-                } 
-                  //cerr << endl << "Returning a sequence" << endl;
-                automatonState = 0;
-                sequences.appendChar ('\0');
-                ungetc (currentC, F);
-                return 2;
-              }
-              addASequenceToList (sequences, seqLengths, firstSequenceLength, names, nameLengths);
-            }
-            if (sequenceInstances == NULL && include_prob < 1.) {
-              include_me = genrand_int32() < up_to;
-            } else {
-              include_me = true;
-            }
-              
-          }
-        }
-        break;
-      }
-    }
     
-      }
+  flockfile(F);
+    
+  try {
   
-  if (automatonState == 2 || (oneByOne && automatonState == 0)) {
-    if (!oneByOne && include_me) {
-      addASequenceToList (sequences, seqLengths, firstSequenceLength, names, nameLengths);
-    }
-    automatonState = 1;
-  } else {
-    cerr << "Unexpected end of file: state " << int(automatonState) << endl;
-    return 1;
+      while (1) {
+        int currentC = getc_unlocked (F);
+          //cout << "State: " << int(automatonState) << "/'" << char(currentC) << "'" << endl;
+        if (feof_unlocked (F))
+          break;
+          
+        switch (automatonState) {
+          case 0: {
+            if (currentC == '>' || currentC == '#') {
+              automatonState = 1;
+              if (sequenceInstances == NULL && include_prob < 1.) {
+                include_me = genrand_int32() < up_to;
+              }
+            }
+            break;
+          }
+          case 1: {
+            if (currentC == '\n' || currentC == '\r') {
+              if (include_me) {
+                  names.appendChar   ('\0');
+     
+                long this_name_l;
+                if (oneByOne) {
+                  this_name_l = names.length ()-1;
+                  
+                } else {
+                  nameLengths.appendValue (names.length());
+                  this_name_l = stringLength (nameLengths, nameLengths.length()-2);
+                }
+
+                
+                if (this_name_l <= 0) {
+                  throw std::string("Sequence names must be non-empty.");
+                }
+                automatonState = 2;
+
+                if (sequenceInstances) {
+                    unsigned long count = 1L;
+                   if (this_name_l >= 3) {
+                      long sep_loc = 0, ll = names.length();
+                      for (sep_loc = 2; sep_loc < this_name_l; sep_loc ++) {
+                        if (names.getChar(ll-sep_loc-1) == sep) {
+                          break;
+                        }
+                      }
+                      if (sep_loc < this_name_l) {
+                        count = atoi (names.getString() + (ll-sep_loc));
+                      }
+                      if (count < 1) {
+                        count = 1;
+                      }
+                      
+                      unsigned long resampled_prob = 0UL;
+                      
+                      if (include_prob < 1.) {
+                        for (long k = 0; k < count; k ++) {
+                          resampled_prob += genrand_int32() < up_to;
+                        }
+                      } else {
+                        resampled_prob = count;
+                      }
+                     
+                     //cerr << count << " -> " << resampled_prob << endl;
+                     
+                      if (resampled_prob == 0UL) {
+                        if (oneByOne) {
+                          names.resetString();
+                        } else {
+                          names.reset_length (nameLengths.value (nameLengths.length()-2));
+                        }
+                        nameLengths.remove(nameLengths.length()-1);
+                        include_me = false;
+                        continue;
+                      } else {
+                        count = resampled_prob;
+                      }
+                      
+                    }
+                    if (oneByOne) {
+                      sequenceInstances->resetVector();
+                    }
+                    sequenceInstances->appendValue(count);
+                  }
+               }
+              
+                
+            }
+            else {
+              if (include_me) {
+                names.appendChar(currentC);
+              }
+            }
+            break;
+          }
+          case 2: {
+            currentC = toupper (currentC);
+            if (validFlags [currentC] >= 0) {
+              if (include_me)
+                //cout << "Append " << currentC << endl;
+                sequences.appendChar (validFlags [currentC]);
+            }
+            else {
+              if (currentC == '>' || currentC == '#') {
+                automatonState = 1;
+                if (include_me) {
+                  if (oneByOne) {
+                    if (firstSequenceLength == 0) {
+                      firstSequenceLength = sequences.length()-1;
+                    }
+                      //cerr << endl << "Returning a sequence" << endl;
+                    automatonState = 0;
+                    sequences.appendChar ('\0');
+                    ungetc (currentC, F);
+                    funlockfile (F);
+                    return 2;
+                  }
+                  addASequenceToList (sequences, seqLengths, firstSequenceLength, names, nameLengths);
+                }
+                if (sequenceInstances == NULL && include_prob < 1.) {
+                  include_me = genrand_int32() < up_to;
+                } else {
+                  include_me = true;
+                }
+                  
+              }
+            }
+            break;
+          }
+        }
+      }
+      
+      if (automatonState == 2 || (oneByOne && automatonState == 0)) {
+          if (include_me) {
+              if (oneByOne) {
+                  if (firstSequenceLength == 0) {
+                      firstSequenceLength = sequences.length()-1;
+                  }
+                  automatonState = 0;
+                  sequences.appendChar ('\0');
+                  funlockfile (F);
+                  return 3;
+              } else {
+                  addASequenceToList (sequences, seqLengths, firstSequenceLength, names, nameLengths);
+              }
+          }
+          automatonState = 1;
+      } else {
+        char err[256] ;
+        snprintf (err, 255, "Unexpected end of file: state %d", automatonState);
+        throw std::string(err);
+      }
+  } catch (std::string const err) {
+      cerr << err << endl;
+      funlockfile (F);
+      return 1;
   }
   return 0;
 }
@@ -834,11 +865,11 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
 void dump_fasta (const char* mapped_characters, const long firstSequenceLength, FILE *output, bool newln, bool is_prot, unsigned long from, unsigned long to) {
   if (from > 0 || to > 0) {
     for (long c = from; c <= to; c++) {
-      fputc( is_prot ? ValidCharsAA[mapped_characters[c]] : ValidChars[mapped_characters[c]], output);    
+      fputc( is_prot ? ValidCharsAA[(unsigned char)mapped_characters[c]] : ValidChars[(unsigned char)mapped_characters[c]], output);
     }
   } else {
     for (long c = 0; c < firstSequenceLength; c++) {
-      fputc( is_prot ? ValidCharsAA[mapped_characters[c]] : ValidChars[mapped_characters[c]], output);
+      fputc( is_prot ? ValidCharsAA[(unsigned char)mapped_characters[c]] : ValidChars[(unsigned char)mapped_characters[c]], output);
     }
   }
   if (newln) {
