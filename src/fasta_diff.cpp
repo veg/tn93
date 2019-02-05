@@ -118,7 +118,10 @@ int main(int argc, const char *argv[]) {
                     }
                     sequences_to_add.erase (master_id);
                 } else {
-                    if (ids_different || args.op == argparse::remove) {
+                    if (ids_different || args.op != argparse::replace) {
+                        if (!ids_different && args.op == argparse::add) {
+                            sequences_to_add.erase (master_id);
+                        }
                         echo_fasta_sequence (master_id.c_str(), sequences.getString(), args.output);
                     }
                 }
