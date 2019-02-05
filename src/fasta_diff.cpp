@@ -114,7 +114,7 @@ int main(int argc, const char *argv[]) {
                         continue;
                     }
                     if (args.op == argparse::add) {
-                        echo_fasta_sequence (master_id.c_str(), sequences_to_add.at (master_id).c_str(), args.output);
+                        echo_fasta_sequence (master_id.c_str(), sequences.getString(), args.output);
                     }
                     sequences_to_add.erase (master_id);
                 } else {
