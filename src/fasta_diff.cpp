@@ -2,10 +2,12 @@
 #include "tn93_shared.h"
 #include "argparse_fasta_diff.hpp"
 #include <map>
+#include <list>
 #include <string>
 
 using namespace std;
 using namespace argparse;
+
 
 #define HISTOGRAM_BINS 200
 #define HISTOGRAM_SLICE ((double)HISTOGRAM_BINS)
@@ -46,6 +48,7 @@ int main(int argc, const char *argv[]) {
 
 
         initAlphabets(false, NULL, true);
+        long non_unique_ids = 0;
         
 
         while (long state = readFASTA(args.input_add, automatonState, names, sequences, nameLengths,
@@ -53,9 +56,15 @@ int main(int argc, const char *argv[]) {
             
             if (state == 2 || state == 3) {
                 long current_size = sequences_to_add.size();
+                std::string check_existing = sequences_to_add[names.getString()];
                 sequences_to_add[names.getString()] = sequences.getString();
                 if (current_size == sequences_to_add.size()) {
-                    throw std::string (names.getString()) + " is not a unique sequence ID";
+                    if (check_existing == sequences_to_add[names.getString()]) {
+                        //cerr << std::string (names.getString()) + " is not a unique sequence ID in the master file" << endl;
+                        non_unique_ids++;
+                    } else {
+                        throw (std::string (names.getString()) + " is not a unique sequence ID in the master file and different instances of this name have different sequences");
+                    }
                 }
                 
                 if (state == 3) {
@@ -70,7 +79,8 @@ int main(int argc, const char *argv[]) {
         long sequences_to_add_count = sequences_to_add.size(),
              duplicates = 0L,
              master_sequences = 0L,
-             output = 0L;
+             output = 0L,
+             updated_sequences_match_id = 0L;
 
         auto echo_fasta_sequence = [&] (const char* id, const char* data, FILE * where) -> void {
             output ++;
@@ -83,6 +93,9 @@ int main(int argc, const char *argv[]) {
          output those that are not present in sequences_to_add
          those that are present in sequences_to_add will be
         */
+        
+        std::list <std::string> updated_sequences;
+        
         while (long state = readFASTA(args.input_master, automatonState, names, sequences, nameLengths, seqLengths, firstSequenceLength, true)) {
             if (state == 2 || state == 3) {
                 std::string master_id (names.getString());
@@ -119,8 +132,11 @@ int main(int argc, const char *argv[]) {
                     sequences_to_add.erase (master_id);
                 } else {
                     if (ids_different || args.op != argparse::replace) {
-                        if (!ids_different && args.op == argparse::add) {
-                            sequences_to_add.erase (master_id);
+                        if (!ids_different) {
+                            updated_sequences.push_back (master_id);
+                            if (args.op == argparse::add) {
+                                sequences_to_add.erase (master_id);
+                            }
                         }
                         echo_fasta_sequence (master_id.c_str(), sequences.getString(), args.output);
                     }
@@ -144,10 +160,22 @@ int main(int argc, const char *argv[]) {
         funlockfile (args.output);
 
         if (!args.quiet) {
-            cerr << endl << "{'master' : " << master_sequences << ',' << endl <<
+            cerr << endl << "{" << endl << "'master' :" << master_sequences << ',' << endl <<
                       "'fasta'  : " << sequences_to_add_count << ',' << endl <<
                       "'output' : " << output << ',' << endl <<
-                      "'duplicate' : " << duplicates << "}" << endl;
+                      "'non-unqiue' : " << non_unique_ids << ',' << endl <<
+                      "'duplicate' : " << duplicates << ',' << endl <<
+                      "'updated_sequences' : [";
+            
+            long k = 0;
+            for (std::string s : updated_sequences) {
+                if (k) {
+                    cerr << ", ";
+                }
+                cerr << "'" << s << "'";
+                k++;
+            }
+            cerr << "]" << endl << "}" << endl;
         }
         
         /*
