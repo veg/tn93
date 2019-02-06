@@ -117,9 +117,9 @@ const long   resolutions_AA [][20] = { {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 
 };
 
-#define N_CHAR 15UL
-#define GAP    17UL
-#define GAP_AA 24UL
+#define N_CHAR 15
+#define GAP    17
+#define GAP_AA 24
 
 const  double   resolutionsCount[] = { 1.f,
   1.f,
@@ -418,12 +418,13 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
   return result;
 }
 
+
 /*---------------------------------------------------------------------------------------------------- */
 
 double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap,
                        unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2, const sequence_gap_structure * sequence_descriptor1, const sequence_gap_structure * sequence_descriptor2) {
   
-  char useK2P   = 0;
+  bool useK2P   = false;
   unsigned long ambig_count = 0UL;
   long aux1;
   
@@ -440,12 +441,10 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
   tv,
   totalNonGap	= 0.,
   nucF[4],
-  pairwiseCounts [4][4];
+  float_counts [4][4] = {{0.},{0.},{0.},{0.}};
   
-  for (unsigned long i = 0; i < 4UL; i++)
-    for (unsigned long j = 0; j < 4UL; j++)
-      pairwiseCounts[i][j] = 0.;
-  
+  long integer_counts [4][4] = {{0L}, {0L}, {0L}, {0L}};
+
   if (randomize == NULL) {
     
     if (sequence_descriptor1 && sequence_descriptor2 && matchMode != GAPMM) {
@@ -464,11 +463,12 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
       
       
       if (span_start > span_end) {
-        for (unsigned long p = first_nongap; p <= last_nongap; p++) {
-          unsigned long c1 = s1[p], c2 = s2[p];
+        for (unsigned p = first_nongap; p <= last_nongap; p++) {
+          unsigned char c1 = s1[p],
+                        c2 = s2[p];
           
-          if (c1 < 4UL && c2 < 4UL) {
-            pairwiseCounts [c1][c2] += 1.;
+          if (c1 < 4 && c2 < 4) {
+            integer_counts [c1][c2] ++;
           } else { // not both resolved
             if (c1 == GAP || c2 == GAP) {
               continue;
@@ -483,7 +483,7 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
           unsigned long c1 = s1[p], c2 = s2[p];
           
           if (c1 < 4UL && c2 < 4UL) {
-            pairwiseCounts [c1][c2] += 1.;
+            integer_counts [c1][c2] ++;
           } else { // not both resolved
             if (c1 == GAP || c2 == GAP) {
               continue;
@@ -492,15 +492,18 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
           }
         }
         
+        // manual loop unroll here, use integer table counts
+          
+          
         for (unsigned long p = span_start; p <= span_end ; p++) {
-            pairwiseCounts [(unsigned char)s1[p]][(unsigned char)s2[p]] += 1.;
+            integer_counts [(unsigned)s1[p]][(unsigned)s2[p]] ++;
         }
-       
+
         for (unsigned long p = span_end + 1UL; p <= last_nongap; p++) {
-          unsigned long c1 = s1[p], c2 = s2[p];
+          unsigned c1 = s1[p], c2 = s2[p];
           
           if (c1 < 4UL && c2 < 4UL) {
-            pairwiseCounts [c1][c2] += 1.;
+            integer_counts [c1][c2] ++;
           } else { // not both resolved
             if (c1 == GAP || c2 == GAP) {
               continue;
@@ -511,11 +514,11 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
       }
     } else {
     
-    for (unsigned long p = 0; p < L; p++) {
-      unsigned long c1 = s1[p], c2 = s2[p];
+    for (unsigned p = 0; p < L; p++) {
+      unsigned c1 = s1[p], c2 = s2[p];
       
-      if (c1 < 4UL && c2 < 4UL) {
-        pairwiseCounts [c1][c2] += 1.;
+      if (c1 < 4 && c2 < 4) {
+        integer_counts [c1][c2] ++;
       } else { // not both resolved
         if (c1 == GAP || c2 == GAP) {
           if (matchMode != GAPMM) {
@@ -539,12 +542,12 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
     }
   } else {
     
-    for (unsigned long p = 0; p < L; p++) {
+    for (unsigned p = 0; p < L; p++) {
       long pi = randomize[p];
-      unsigned long c1 = s1[pi], c2 = s2[pi];
+      unsigned c1 = s1[pi], c2 = s2[pi];
       
-      if (c1 < 4UL && c2 < 4UL) {
-        pairwiseCounts [c1][c2] += 1.;
+      if (c1 < 4 && c2 < 4) {
+        integer_counts [c1][c2] ++;
       } else { // not both resolved
         if (c1 == GAP || c2 == GAP) {
           if (matchMode != GAPMM) {
@@ -570,11 +573,10 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
   
   for (unsigned long c1 = 0; c1 < 4; c1++) {
     for (unsigned long c2 = 0; c2 < 4; c2++) {
-      double pc = pairwiseCounts[c1][c2];
+      double pc = (float_counts[c1][c2] += (double)integer_counts[c1][c2]);
       totalNonGap   += pc;
       nucFreq [c1]  += pc;
       nucFreq [c2]  += pc;
-      
     }
   }
   
@@ -597,26 +599,24 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
   fR = nucF[0]+nucF[2];
   fY = nucF[1]+nucF[3];
   
-  if (nucFreq[0] == 0 || nucFreq[1] == 0 || nucFreq[2] == 0 || nucFreq[3] == 0)
-    useK2P = 1;
-  else
-      {
+  if (nucFreq[0] == 0 || nucFreq[1] == 0 || nucFreq[2] == 0 || nucFreq[3] == 0) {
+      useK2P = true;
+  } else {
     K1 = 2.*nucF[0]*nucF[2]/fR;
     K2 = 2.*nucF[1]*nucF[3]/fY;
     K3 = 2.*(fR*fY - nucF[0]*nucF[2]*fY/fR - nucF[1]*nucF[3]*fR/fY);
-      }
+  }
   
-  AG = (pairwiseCounts[0][2] + pairwiseCounts[2][0])*totalNonGap;
-  CT = (pairwiseCounts[1][3] + pairwiseCounts[3][1])*totalNonGap;
-  tv = 1.-((pairwiseCounts[0][0] + pairwiseCounts[1][1] + pairwiseCounts[2][2] + pairwiseCounts[3][3])*totalNonGap +
+  AG = (float_counts[0][2] + float_counts[2][0] )*totalNonGap;
+  CT = (float_counts[1][3] + float_counts[3][1])*totalNonGap;
+  tv = 1.-((float_counts[0][0] + float_counts[1][1] + float_counts[2][2] + float_counts[3][3])*totalNonGap +
            AG+CT);
   
   
   double dist;
   
   
-  if (useK2P)
-      {
+  if (useK2P) {
     ti = AG+CT;
     AG = 1.-2.*ti-tv;
     CT = 1.-2.*tv;
@@ -624,17 +624,15 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
       dist = -0.5*log(AG)-0.25*log(CT);
     else  
       dist = TN93_MAX_DIST;
-      }
-  else
-      {
+  } else {
     AG	= 1.-AG/K1 - 0.5*tv/fR;
     CT	= 1.-CT/K2 - 0.5*tv/fY;
     tv  = 1.-0.5 * tv/fY/fR;
     if (AG > 0. && CT > 0. && tv > 0)
-      dist = - K1*log(AG) - K2*log(CT) - K3 * log (tv);
+      dist = - K1*log(AG) - K2*log(CT) - K3*log (tv);
     else
       dist = TN93_MAX_DIST;
-      }
+  }
   
   if (histogram) {
     long index = floor(dist * slice);
