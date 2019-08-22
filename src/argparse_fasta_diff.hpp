@@ -23,7 +23,8 @@ namespace argparse {
     
     enum match_mode {
         id,
-        id_and_sequence
+        id_and_sequence,
+        sequence
     };
     
     

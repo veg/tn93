@@ -37,6 +37,7 @@ namespace argparse {
     "  -t MATCH                 sequences in MASTER and FASTA are matched using (default=" TO_STR( DEFAULT_MATCH ) ")\n"
     "                           id: ONLY the sequence ID  \n"
     "                           id_sequence: BOTH sequence ID and the sequence itself (not case sensitive\n"
+    "                           sequence: ONLY sequence data (not case sensitive), only in remove operation mode\n"
     "  FASTA                    read sequences to compare from this file (default=stdin)\n";
     
     inline
@@ -169,6 +170,8 @@ namespace argparse {
             checks = id;
         } else if (!strcmp (str, "id_sequence")) {
             checks = id_and_sequence;
+        } else if (!strcmp (str, "sequence")) {
+          checks = sequence;
         } else  {
             ERROR( "invalid match mode: %s", str );
         }
