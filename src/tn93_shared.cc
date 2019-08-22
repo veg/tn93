@@ -421,7 +421,7 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
 
 /*---------------------------------------------------------------------------------------------------- */
 
-double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap,
+double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap,
                        unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2, const sequence_gap_structure * sequence_descriptor1, const sequence_gap_structure * sequence_descriptor2) {
   
   bool useK2P   = false;
@@ -482,7 +482,7 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
         for (unsigned long p = first_nongap; p < span_start; p++) {
           unsigned long c1 = s1[p], c2 = s2[p];
           
-          if (c1 < 4UL && c2 < 4UL) {
+          if (__builtin_expect(c1 < 4UL && c2 < 4UL, 1)) {
             integer_counts [c1][c2] ++;
           } else { // not both resolved
             if (c1 == GAP || c2 == GAP) {
@@ -494,15 +494,34 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
         
         // manual loop unroll here, use integer table counts
           
+        //long equals [4] = {0L,0L,0L,0L};
           
-        for (unsigned long p = span_start; p <= span_end ; p++) {
-            integer_counts [(unsigned)s1[p]][(unsigned)s2[p]] ++;
-        }
+          unsigned long p  = span_start;
+          for (; p + 2 <= span_end ; p+=2) {
+              unsigned  idx1 = ((unsigned)s1[p]);
+              unsigned  idx2 = ((unsigned)s2[p]);
+              unsigned  idx3 = ((unsigned)s1[p+1]);
+              unsigned  idx4 = ((unsigned)s2[p+1]);
+              integer_counts [idx1][idx2] ++;
+              integer_counts [idx3][idx4] ++;
+          }
+              
+          for (; p <= span_end ; p++) {
+           unsigned  idx1 = ((unsigned)s1[p]);
+           unsigned  idx2 = ((unsigned)s2[p]);
+           integer_counts [idx1][idx2] ++;
+         }
 
+        /*for (unsigned long p = span_start; p <= span_end ; p++) {
+            unsigned  idx1 = ((unsigned)s1[p]);
+            unsigned  idx2 = ((unsigned)s2[p]);
+            integer_counts [idx1][idx2] ++;
+        }*/
+          
         for (unsigned long p = span_end + 1UL; p <= last_nongap; p++) {
           unsigned c1 = s1[p], c2 = s2[p];
           
-          if (c1 < 4UL && c2 < 4UL) {
+          if (__builtin_expect(c1 < 4UL && c2 < 4UL,1)) {
             integer_counts [c1][c2] ++;
           } else { // not both resolved
             if (c1 == GAP || c2 == GAP) {
@@ -517,7 +536,7 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
     for (unsigned p = 0; p < L; p++) {
       unsigned c1 = s1[p], c2 = s2[p];
       
-      if (c1 < 4 && c2 < 4) {
+      if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
         integer_counts [c1][c2] ++;
       } else { // not both resolved
         if (c1 == GAP || c2 == GAP) {
@@ -546,7 +565,7 @@ double		computeTN93 (const char * s1, const char * s2,  const unsigned long L, c
       long pi = randomize[p];
       unsigned c1 = s1[pi], c2 = s2[pi];
       
-      if (c1 < 4 && c2 < 4) {
+      if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
         integer_counts [c1][c2] ++;
       } else { // not both resolved
         if (c1 == GAP || c2 == GAP) {
