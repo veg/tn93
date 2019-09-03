@@ -125,7 +125,7 @@ void handle_a_sequence (StringBuffer& current_sequence, StringBuffer& current_cl
     long try_cluster = -1;
     
         #ifdef _OPENMP
-          #if _OPENMP >= 201511
+          #if _OPENMP >= 201511 && __GNUC__ >= 9
             #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster, sequence_lengths, current_sequence, current_clusters,min_overlap,firstSequenceLength)
           #else
           #if _OPENMP >= 200805

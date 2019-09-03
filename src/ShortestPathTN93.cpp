@@ -88,7 +88,7 @@ void relaxDistanceEstimates (const unsigned long theSequence, const long firstSe
     double               my_distance_estimate = distanceEstimates.value (theSequence);
     #ifdef _OPENMP
   
-    #if _OPENMP >= 201511
+    #if _OPENMP >= 201511 && __GNUC__ >= 9
       #pragma omp parallel for default(none) shared(my_distance_estimate,nodeParents,workingNodes,distanceEstimates, step_penalty, min_overlap, resolutionOption, firstSequenceLength, theSequence, left_to_do)
     #else
       #pragma omp parallel for default(none) shared(my_distance_estimate,nodeParents,workingNodes,distanceEstimates)
