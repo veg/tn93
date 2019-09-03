@@ -86,8 +86,15 @@ void reportPathToSource (const unsigned long which_index, FILE* output, const bo
 void relaxDistanceEstimates (const unsigned long theSequence, const long firstSequenceLength, const char resolutionOption, const long min_overlap, const double step_penalty) {
     const unsigned long left_to_do           = workingNodes.length();
     double               my_distance_estimate = distanceEstimates.value (theSequence);
-
-    #pragma omp parallel for default(none) shared(my_distance_estimate,nodeParents,workingNodes,distanceEstimates)
+    #ifdef _OPENMP
+  
+    #if _OPENMP >= 201511
+      #pragma omp parallel for default(none) shared(my_distance_estimate,nodeParents,workingNodes,distanceEstimates, step_penalty, min_overlap, resolutionOption, firstSequenceLength, theSequence, left_to_do)
+    #else
+      #pragma omp parallel for default(none) shared(my_distance_estimate,nodeParents,workingNodes,distanceEstimates)
+    #endif
+    #endif
+  
 
     for (long remaining = 0; remaining < left_to_do; remaining ++) {
         const unsigned long working_index = workingNodes.value(remaining);
