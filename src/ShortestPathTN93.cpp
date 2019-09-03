@@ -87,7 +87,7 @@ void relaxDistanceEstimates (const unsigned long theSequence, const long firstSe
     const unsigned long left_to_do           = workingNodes.length();
     double               my_distance_estimate = distanceEstimates.value (theSequence);
 
-    #pragma omp parallel for default(none) shared(my_distance_estimate,nodeParents,workingNodes,distanceEstimates)
+    #pragma omp parallel for default(none) shared(my_distance_estimate,nodeParents,workingNodes,distanceEstimates,resolutionOption,firstSequenceLength,step_penalty,left_to_do,min_overlap,theSequence)
 
     for (long remaining = 0; remaining < left_to_do; remaining ++) {
         const unsigned long working_index = workingNodes.value(remaining);
