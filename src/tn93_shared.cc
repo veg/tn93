@@ -35,7 +35,7 @@ unsigned char   * resolveTheseAmbigs = (unsigned char   *)calloc (256,sizeof (un
 
 double          resolve_fraction = 1.;
                   
-static char empty        [] = "";
+static char empty_string        [] = "";
 
 
 const long   resolutions [][4] = { {1,0,0,0},
@@ -333,7 +333,7 @@ char* stringText (const StringBuffer& strings, const Vector& lengths, unsigned l
 {
   if (index < lengths.length() - 1L) 
     return strings.getString() + lengths.value(index);  
-  return empty;
+  return empty_string;
 }
 
   //---------------------------------------------------------------
