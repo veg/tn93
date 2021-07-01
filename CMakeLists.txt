@@ -183,9 +183,9 @@ install(
 	OPTIONAL
 )
 
-add_custom_target(TN93
-	DEPENDS tn93
-)
+#add_custom_target(TN93
+#  DEPENDS tn93
+#)
 
 
 install(
@@ -199,9 +199,9 @@ add_custom_target(TN93SP
 )
 
 
-add_custom_target(SEQCOVERAGE
-	DEPENDS seqcoverage
-)
+#add_custom_target(SEQCOVERAGE
+#  DEPENDS seqcoverage
+#)
 
 install(
     TARGETS nucfreqsfasta
