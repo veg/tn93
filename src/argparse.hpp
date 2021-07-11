@@ -9,6 +9,7 @@
 #define DEFAULT_FORMAT            csv
 #define DEFAULT_FRACTION          1.0
 #define DEFAULT_DISTANCE          0.015
+#define DEFAULT_MIN_DISTANCE      -1.e-10
 #define DEFAULT_COUNTS_IN_NAME    ':'
 #define DEFAULT_OVERLAP           100
 #define DEFAULT_INCLUDE_PROB      1.0
@@ -43,6 +44,7 @@ namespace argparse
                         * input2;
              
         double          distance;
+        double          min_distance;
         ambig_t         ambig;
         format_t        format;
         unsigned long   overlap;
@@ -66,6 +68,7 @@ namespace argparse
         void parse_second_in( const char * );
         void parse_output   ( const char * );
         void parse_distance ( const char * );
+        void parse_min_distance ( const char * );
         void parse_overlap  ( const char * );
         void parse_format   ( const char * );
         void parse_ambig    ( const char * );

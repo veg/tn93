@@ -20,6 +20,7 @@ namespace argparse
   "[-v] "
   "[-o OUTPUT] "
   "[-t THRESHOLD] "
+  "[-w MIN_THRESHOLD] "
   "[-a AMBIGS] "
   "[-g FRACTION] "
   "[-l OVERLAP] "
@@ -41,6 +42,7 @@ namespace argparse
   "  -v, --version            show tn93 version \n"
   "  -o OUTPUT                direct the output to a file named OUTPUT (default=stdout)\n"
   "  -t THRESHOLD             only report (count) distances below this threshold (>=0, default=" TO_STR (DEFAULT_DISTANCE)")\n"
+  "  -w MINIMUM THRESHOLD     report distances above minimum threshold \n"
   "  -a AMBIGS                handle ambigous nucleotides using one of the following strategies (default=" TO_STR( DEFAULT_AMBIG ) ")\n"
   "                           resolve: resolve ambiguities to minimize distance (e.g.R matches A);\n"
   "                           average: average ambiguities (e.g.R-A is 0.5 A-A and 0.5 G-A);\n"
@@ -114,6 +116,7 @@ namespace argparse
   input1( stdin ),
   input2( NULL ),
   distance( DEFAULT_DISTANCE ),
+  min_distance( DEFAULT_MIN_DISTANCE ),
   ambig( DEFAULT_AMBIG ),
   format ( DEFAULT_FORMAT ),
   overlap ( DEFAULT_OVERLAP ),
@@ -143,6 +146,7 @@ namespace argparse
         else if (  arg[1] == 'v' ) version();
         else if (  arg[1] == 'o' ) parse_output( next_arg (i, argc, argv) );
         else if (  arg[1] == 't' ) parse_distance ( next_arg (i, argc, argv) );
+        else if (  arg[1] == 'w' ) parse_min_distance ( next_arg (i, argc, argv) );
         else if (  arg[1] == 'l')  parse_overlap( next_arg (i, argc, argv) );
         else if (  arg[1] == 'f')  parse_format( next_arg (i, argc, argv) );
         else if (  arg[1] == 'a')  parse_ambig( next_arg (i, argc, argv) );
@@ -225,6 +229,15 @@ namespace argparse
     if ( distance < 0.0 || distance > 1.0)
       ERROR( "genetic distance threshold must be in [0,1], had: %s", str );
   }
+
+  void args_t::parse_min_distance ( const char * str )
+  {
+    min_distance = atof( str );
+    
+    if ( min_distance < 0.0 || min_distance > 1.0)
+      ERROR( "genetic minimum distance threshold must be in [0,1], had: %s", str );
+  }
+
 
   void args_t::parse_fraction ( const char * str )
   {
