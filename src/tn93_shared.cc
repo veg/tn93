@@ -427,6 +427,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   bool useK2P   = false;
   unsigned long ambig_count = 0UL;
   long aux1;
+    
   
   double auxd,
   nucFreq[4]		= {0.,0.,0.,0.},
@@ -443,7 +444,94 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   nucF[4],
   float_counts [4][4] = {{0.},{0.},{0.},{0.}};
   
-  long integer_counts [4][4] = {{0L}, {0L}, {0L}, {0L}};
+  long integer_counts  [4][4] = {{0L}, {0L}, {0L}, {0L}};
+  long integer_counts2 [4][4] = {{0L}, {0L}, {0L}, {0L}};
+
+  auto ambiguityHandler = [&] (unsigned c1, unsigned c2) -> void {
+      if (c1 < 4UL) { // c1 resolved and c2 is not
+        if (matchMode != SKIP) {
+          if (resolutionsCount[c2] > 0.) {
+            if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c2]))
+              if (resolutions[c2][c1]) {
+                ambig_count ++;
+                integer_counts[c1][c1] ++;
+                return;
+              }
+            
+            if (resolutions[c2][0])
+              float_counts[c1][0] += resolutionsCount[c2];
+            if (resolutions[c2][1])
+              float_counts[c1][1] += resolutionsCount[c2];
+            if (resolutions[c2][2])
+              float_counts[c1][2] += resolutionsCount[c2];
+            if (resolutions[c2][3])
+              float_counts[c1][3] += resolutionsCount[c2];
+          }
+        }
+      }
+      else {
+        if (matchMode != SKIP) {
+          if (c2 < 4UL) { // c2 resolved an c1 is not
+            if (resolutionsCount[c1] > 0.) {
+              if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c1])) {
+                if (resolutions[c1][c2]) {
+                  ambig_count ++;
+                  integer_counts[c2][c2] ++;
+                    return;
+                }
+              }
+              
+              if (resolutions[c1][0])
+                float_counts[0][c2] += resolutionsCount[c1];
+              if (resolutions[c1][1])
+                float_counts[1][c2] += resolutionsCount[c1];
+              if (resolutions[c1][2])
+                float_counts[2][c2] += resolutionsCount[c1];
+              if (resolutions[c1][3])
+                float_counts[3][c2] += resolutionsCount[c1];
+            }
+          } else {
+            // ambig and ambig
+            double norm = resolutionsCount[c1] * resolutionsCount[c2];
+            //cout << int(c1) << ":" << int(c2) << "/" << norm << endl;
+            if (norm > 0.0) {
+              if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c1] && resolveTheseAmbigs[c2])) {
+                ambig_count ++;
+                long matched_count = 0L,
+                positive_match [4] = {0,0,0,0};
+                for (long i = 0; i < 4L; i ++) {
+                  if (resolutions[c1][i] && resolutions[c2][i]) {
+                    matched_count ++;
+                    positive_match[i] = 1;
+                  }
+                }
+                
+                if (matched_count > 0L) {
+                  double norm2 = 1./matched_count;
+                  
+                  for (long i = 0; i < 4L; i ++) {
+                    if (positive_match[i]) {
+                      float_counts[i][i] += norm2;
+                    }
+                  }
+                    return;
+                }
+              }
+              
+              for (long i = 0; i < 4L; i ++) {
+                if (resolutions[c1][i]) {
+                  for (long j = 0; j < 4L; j ++) {
+                    if (resolutions [c2][j]) {
+                      float_counts[i][j] += norm;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+  };
 
   if (randomize == NULL) {
     
@@ -464,8 +552,8 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
       
       if (span_start > span_end) {
         for (unsigned p = first_nongap; p <= last_nongap; p++) {
-          unsigned char c1 = s1[p],
-                        c2 = s2[p];
+          unsigned c1 = s1[p],
+                   c2 = s2[p];
           
           if (c1 < 4 && c2 < 4) {
             integer_counts [c1][c2] ++;
@@ -473,43 +561,75 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
             if (c1 == GAP || c2 == GAP) {
               continue;
             }
-#include "tn93_function_reuse.cc"
+            ambiguityHandler (c1,c2);
           }
         }
       }
       else {
         
-        for (unsigned long p = first_nongap; p < span_start; p++) {
-          unsigned long c1 = s1[p], c2 = s2[p];
+        /*for (unsigned long p = first_nongap; p < span_start; p++) {
+          unsigned c1 = s1[p], c2 = s2[p];
           
-          if (__builtin_expect(c1 < 4UL && c2 < 4UL, 1)) {
+          if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
             integer_counts [c1][c2] ++;
           } else { // not both resolved
             if (c1 == GAP || c2 == GAP) {
               continue;
             }
-  #include "tn93_function_reuse.cc"
+            ambiguityHandler (c1,c2);
           }
+        }*/
+        unsigned long p = first_nongap;
+          
+        for (; p + 2 <= span_start; p+=2) {
+            unsigned c1 = s1[p], c2 = s2[p];
+            unsigned c3 = s1[p+1], c4 = s2[p+1];
+
+            if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
+              integer_counts [c1][c2] ++;
+            } else { // not both resolved
+              if (c1 == GAP || c2 == GAP) {
+                continue;
+              }
+              ambiguityHandler (c1,c2);
+            }
+            
+            if (__builtin_expect(c3 < 4 && c4 < 4, 1)) {
+              integer_counts2 [c3][c4] ++;
+            } else { // not both resolved
+              if (c3 == GAP || c4 == GAP) {
+                continue;
+              }
+              ambiguityHandler (c3,c4);
+            }
+        }
+          
+        if (p < span_start) {
+            unsigned c1 = s1[p+1];
+            unsigned c2 = s2[p+1];
+
+            if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
+              integer_counts [c1][c2] ++;
+            } else { // not both resolved
+              if (c1 != GAP && c2 != GAP) {
+                  ambiguityHandler (c1,c2);
+              }
+            }
+          
         }
         
         // manual loop unroll here, use integer table counts
           
         //long equals [4] = {0L,0L,0L,0L};
           
-          unsigned long p  = span_start;
+          p  = span_start;
           for (; p + 2 <= span_end ; p+=2) {
-              unsigned  idx1 = ((unsigned)s1[p]);
-              unsigned  idx2 = ((unsigned)s2[p]);
-              unsigned  idx3 = ((unsigned)s1[p+1]);
-              unsigned  idx4 = ((unsigned)s2[p+1]);
-              integer_counts [idx1][idx2] ++;
-              integer_counts [idx3][idx4] ++;
+              integer_counts  [s1[p]]   [s2[p]]   ++;
+              integer_counts2 [s1[p+1]] [s2[p+1]] ++;
           }
               
           for (; p <= span_end ; p++) {
-           unsigned  idx1 = ((unsigned)s1[p]);
-           unsigned  idx2 = ((unsigned)s2[p]);
-           integer_counts [idx1][idx2] ++;
+           integer_counts [(unsigned)s1[p]][(unsigned)s2[p]] ++;
          }
 
         /*for (unsigned long p = span_start; p <= span_end ; p++) {
@@ -527,72 +647,70 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
             if (c1 == GAP || c2 == GAP) {
               continue;
             }
-  #include "tn93_function_reuse.cc"
+            ambiguityHandler (c1,c2);
           }
         }
       }
     } else {
-    
-    for (unsigned p = 0; p < L; p++) {
-      unsigned c1 = s1[p], c2 = s2[p];
-      
-      if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
-        integer_counts [c1][c2] ++;
-      } else { // not both resolved
-        if (c1 == GAP || c2 == GAP) {
-          if (matchMode != GAPMM) {
-            continue;
-          } else {
-            if (c1 == GAP && c2 == GAP)
-              continue;
-            else {
-              if (c1 == GAP) {
-                c1 = N_CHAR;
+        for (unsigned p = 0; p < L; p++) {
+          unsigned c1 = s1[p], c2 = s2[p];
+          
+          if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
+            integer_counts [c1][c2] ++;
+          } else { // not both resolved
+            if (c1 == GAP || c2 == GAP) {
+              if (matchMode != GAPMM) {
+                continue;
               } else {
-                c2 = N_CHAR;
+                if (c1 == GAP && c2 == GAP)
+                  continue;
+                else {
+                  if (c1 == GAP) {
+                    c1 = N_CHAR;
+                  } else {
+                    c2 = N_CHAR;
+                  }
+                }
               }
             }
+            
+            ambiguityHandler (c1,c2);
           }
         }
-        
-#include "tn93_function_reuse.cc"
-      }
-    }
     }
   } else {
-    
-    for (unsigned p = 0; p < L; p++) {
-      long pi = randomize[p];
-      unsigned c1 = s1[pi], c2 = s2[pi];
-      
-      if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
-        integer_counts [c1][c2] ++;
-      } else { // not both resolved
-        if (c1 == GAP || c2 == GAP) {
-          if (matchMode != GAPMM) {
-            continue;
-          } else {
-            if (c1 == GAP && c2 == GAP)
-              continue;
-            else {
-              if (c1 == GAP) {
-                c1 = N_CHAR;
+        for (unsigned p = 0; p < L; p++) {
+          long pi = randomize[p];
+          unsigned c1 = s1[pi], c2 = s2[pi];
+          
+          if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
+            integer_counts [c1][c2] ++;
+          } else { // not both resolved
+            if (c1 == GAP || c2 == GAP) {
+              if (matchMode != GAPMM) {
+                continue;
               } else {
-                c2 = N_CHAR;
+                if (c1 == GAP && c2 == GAP)
+                  continue;
+                else {
+                  if (c1 == GAP) {
+                    c1 = N_CHAR;
+                  } else {
+                    c2 = N_CHAR;
+                  }
+                }
               }
             }
+            
+            ambiguityHandler (c1,c2);
           }
         }
-        
-#include "tn93_function_reuse.cc"
-      }
-    }
   }
   
   
   for (unsigned long c1 = 0; c1 < 4; c1++) {
     for (unsigned long c2 = 0; c2 < 4; c2++) {
-      double pc = (float_counts[c1][c2] += (double)integer_counts[c1][c2]);
+      double pc = (float_counts[c1][c2] += (double)(integer_counts[c1][c2] + integer_counts2[c1][c2]));
       totalNonGap   += pc;
       nucFreq [c1]  += pc;
       nucFreq [c2]  += pc;

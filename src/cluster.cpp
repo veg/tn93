@@ -275,17 +275,36 @@ int main(int argc, const char *argv[]) {
                   firstSequenceLength, resolutionOption, NULL, args.overlap,
                   NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L,
                   &sequence_descriptors[seq2], &sequence_descriptors[csi]);
-              if (d < 0. || d > args.distance) {
-                throw(0);
-              }
+                if (d > args.distance || d < 0.) {
+                    throw(current_cluster_seq);
+                }
             }
           } else {
-            throw(0);
+            throw(0UL);
           }
           current_cluster->appendValue(seq2);
-          // cerr << "removing " << seq2 << endl;
+          //cerr << "removing " << seq2 << " : " << remaining.size() << " / " << current_cluster->length() << endl;
           inner_iterator = remaining.erase(inner_iterator);
-        } catch (int e) {
+            if (!args.quiet) {
+              time(&after);
+              double dt = difftime(after, before);
+              if (dt > 0.) {
+                percentDone =
+                    (sequenceCount - remaining.size()) * 100. / sequenceCount;
+                cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                        "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                        "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress"
+                        ":"
+                     << setw(8) << percentDone << "% (" << setw(8) << clusters.size()
+                     << " clusters created, " << setw(12) << std::setprecision(3)
+                     << ((double)sequenceCount - remaining.size()) / dt
+                     << " sequences clustered/sec)";
+
+                after = before;
+              }
+            }
+        } catch (unsigned long e) {
+          //cerr << "mismatch at " << e << endl;
           inner_iterator++;
         }
       }
