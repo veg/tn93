@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 project(TN93)
 
 #-------------------------------------------------------------------------------
@@ -32,7 +32,6 @@ add_executable(
     src/tn93_shared.cc
     src/argparse_cluster.cpp
 )
-
 
 add_executable(
     seqcoverage
@@ -87,65 +86,28 @@ add_executable(
     src/argparse_fasta_diff.cpp
 )
 
-#set(DEFAULT_COMPILE_FLAGS "-O3 -march=native -g -mveclibabi=svml -mstringop-strategy=vector_loop -Wa,-q")
-set(DEFAULT_COMPILE_FLAGS "-O3 -std=c++11 -march=native -funroll-loops -g")
+set(DEFAULT_COMPILE_OPTIONS -O3 -std=c++14 -funroll-loops )
+set(DEFAULT_LINK_OPTIONS ${DEFAULT_COMPILE_OPTIONS})
 
-set(DEFAULT_LINK_FLAGS "${DEFAULT_COMPILE_FLAGS}")
+add_definitions(${DEFAULT_COMPILE_OPTIONS})
+
+
+#add_compile_options (-O3 -std=c++14 -march=native -funroll-loops )
 
 find_package(OpenMP)
 
-if (${OPENMP_FOUND})
-	set_target_properties(
-		tn93
-		PROPERTIES
-		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
-		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
-	)
-	set_target_properties(
-		tn93-cluster
-		PROPERTIES
-		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
-		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
-	)
-	set_target_properties(
-		selectreads
-		PROPERTIES
-		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
-		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
-	)
-	set_target_properties(
-		seqcoverage
-		PROPERTIES
-		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
-		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
-	)
-	set_target_properties(
-		ShortestPathTN93
-		PROPERTIES
-		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
-		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
-    )
-	set_target_properties(
-		readreduce
-		PROPERTIES
-		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
-		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS}"
-    )
+if(${OPENMP_FOUND})
+   add_definitions(${OpenMP_CXX_FLAGS})
+   target_link_libraries(tn93 PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
+   target_link_libraries(tn93-cluster PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
+   target_link_libraries(selectreads PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
+   target_link_libraries(seqcoverage PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
+   target_link_libraries(readreduce PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
+   target_link_libraries(fasta_diff PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
+   target_link_libraries(ShortestPathTN93 PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
+endif(${OPENMP_FOUND})
 
-	set_target_properties(
-		fasta_diff
-		PROPERTIES
-		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} ${OpenMP_CXX_FLAGS}"
-		LINK_FLAGS "${DEFAULT_LINK_FLAGS} ${OpenMP_CXX_FLAGS} "
-    )
 
-endif (${OPENMP_FOUND})
-
-	set_target_properties(
-		fasta_diff
-		PROPERTIES
-		COMPILE_FLAGS "${DEFAULT_COMPILE_FLAGS} -std=c++14 "
-   )
 
 install(
     TARGETS tn93
@@ -198,10 +160,6 @@ add_custom_target(TN93SP
 	DEPENDS ShortestPathTN93
 )
 
-
-#add_custom_target(SEQCOVERAGE
-#  DEPENDS seqcoverage
-#)
 
 install(
     TARGETS nucfreqsfasta

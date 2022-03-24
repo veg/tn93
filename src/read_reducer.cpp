@@ -58,12 +58,11 @@ void merge_current_clusters (StringBuffer& current_clusters, Vector& sequence_le
             long try_cluster = -1;
             
             #ifdef _OPENMP
-              
-            #if _OPENMP >= 200805 
-              #pragma omp parallel shared(current_clusters, sequence_lengths, cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)            
-            #else 
-              #pragma omp parallel shared(cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)
-            #endif 
+                #if _OPENMP >= 200805
+                  #pragma omp parallel shared(current_clusters, sequence_lengths, cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)
+                #else
+                  #pragma omp parallel shared(cluster_id, try_cluster, cluster_merge, cluster1, did_some_merges, merged_cluster_count)
+                #endif
             #endif
             {
                 #pragma omp for schedule (dynamic)
@@ -125,14 +124,10 @@ void handle_a_sequence (StringBuffer& current_sequence, StringBuffer& current_cl
     long try_cluster = -1;
     
         #ifdef _OPENMP
-          #if _OPENMP >= 201511 && __GNUC__ >= 9
-            #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster, sequence_lengths, current_sequence, current_clusters,min_overlap,firstSequenceLength)
-          #else
           #if _OPENMP >= 200805
-            #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster, sequence_lengths, current_sequence, current_clusters)
+            #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster, sequence_lengths, current_sequence, current_clusters, firstSequenceLength, min_overlap)
           #else 
             #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster)
-          #endif
           #endif
         #endif
         for (long cluster_index = 0; cluster_index < currently_defined_clusters; cluster_index ++) {
