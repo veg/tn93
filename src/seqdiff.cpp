@@ -8,6 +8,7 @@
 #include "argparse_seqdiff.hpp"
 #include <map>
 #include <vector>
+#include<algorithm>
 
 using namespace std;
 using namespace argparse;
@@ -219,8 +220,8 @@ int main(int argc, const char *argv[]) {
   }
     
   delete [] sequence_descriptors;
-  fclose (args.input);
-  fclose (args.output);
+  //fclose (args.input);
+  //fclose (args.output);
   return 0;
 
   /*if (args.cluster_type == all) {
