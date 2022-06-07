@@ -99,6 +99,23 @@ int main(int argc, const char *argv[]) {
     
     
   for (long seq_id = 1L; seq_id < sequenceCount; seq_id ++) {
+      
+      if (!args.quiet && (seq_id * 100. / sequenceCount - percentDone > 0.1 ||
+                          seq_id == (long)sequenceCount - 1)) {
+        {
+          time(&after);
+          percentDone = seq_id * 100. / sequenceCount;
+          cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                  "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                  "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress"
+                  ":"
+               << setw(8) << percentDone << "% " << setw(12) << std::setprecision(3)
+               << seq_id / difftime(after, before) << " evals/sec)";
+
+          after = before;
+        }
+      }
+      
       Vector* differences = new Vector;
       const char *seq_data = stringText(sequences, seqLengths, seq_id);
 

@@ -86,6 +86,15 @@ add_executable(
     src/argparse_fasta_diff.cpp
 )
 
+add_executable(
+    seqdiff
+    src/seqdiff.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+    src/argparse_seqdiff.cpp
+)
+
+
 set(DEFAULT_COMPILE_OPTIONS -O3 -std=c++14 -funroll-loops )
 set(DEFAULT_LINK_OPTIONS ${DEFAULT_COMPILE_OPTIONS})
 
@@ -105,6 +114,7 @@ if(${OPENMP_FOUND})
    target_link_libraries(readreduce PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(fasta_diff PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(ShortestPathTN93 PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
+   target_link_libraries(seqdiff PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
 endif(${OPENMP_FOUND})
 
 
@@ -141,6 +151,12 @@ install(
 
 install(
     TARGETS fasta_diff
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
+install(
+    TARGETS seqdiff
 	RUNTIME DESTINATION bin
 	OPTIONAL
 )

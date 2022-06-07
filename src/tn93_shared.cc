@@ -782,6 +782,56 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   return dist <= 0. ? 0. : dist; // this is to avoid returning -0
 }
 
+/*---------------------------------------------------------------------------------------------------- */
+
+inline long pack_difference (long location, unsigned alt) {
+    return (location << 8) + alt;
+}
+
+
+/*---------------------------------------------------------------------------------------------------- */
+
+long        computeDifferences (const char * __restrict__ s1,
+                                const char * __restrict__ s2,
+                                const unsigned long L,
+                                const char matchMode,
+                                Vector & result,
+                                const sequence_gap_structure * sequence_descriptor1,
+                                const sequence_gap_structure * sequence_descriptor2) {
+    
+
+    if (sequence_descriptor1 && sequence_descriptor2) {
+      
+      unsigned long first_nongap = MIN  (sequence_descriptor1->first_nongap,   sequence_descriptor2->first_nongap),
+                    last_nongap  = MAX  (sequence_descriptor1->last_nongap,    sequence_descriptor2->last_nongap);
+//#pragma omp critical
+//      cout << first_nongap << " " << last_nongap << " " << span_start << " " << span_end << endl;
+        
+      if (matchMode == INFORMATIVE) {
+          for (long p = first_nongap; p < last_nongap; p++) {
+              unsigned c1 = s1[p],
+                       c2 = s2[p];
+              
+              if (c1 != c2) {
+                  if (c2 != N_CHAR && c1 != N_CHAR) {
+                      result.appendValue(pack_difference(p,c2));
+                  }
+              }
+          }
+      } else if (matchMode == MISMATCH) {
+          for (long p = first_nongap; p < last_nongap; p++) {
+              unsigned c1 = s1[p],
+                       c2 = s2[p];
+              
+              if (c1 != c2) {
+                  result.appendValue(pack_difference(p,c2));
+              }
+          }
+      }
+    }
+    
+    return result.length();
+}
 
   //---------------------------------------------------------------
 
