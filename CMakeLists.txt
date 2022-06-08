@@ -12,6 +12,8 @@ set(CMAKE_CONFIGURATION_TYPES Release)
 # SET VERSION FROM FILE
 file (STRINGS "VERSION.txt" VERSION_NUMBER)
 add_definitions (-DVERSION_NUMBER=\"${VERSION_NUMBER}\")
+add_compile_options (-O3 -std=c++14 -march=native -funroll-loops )
+add_link_options(-O3 -std=c++14 -march=native -funroll-loops)
 
 include_directories(
     src/
@@ -102,10 +104,6 @@ add_executable(
 
 
 #add_definitions(${DEFAULT_COMPILE_OPTIONS})
-
-add_compile_options (-O3 -std=c++14 -march=native -funroll-loops )
-#add_compile_options (-O3 -std=c++14)
-add_link_options(-O3 -std=c++14 -march=native -funroll-loops)
 
 find_package(OpenMP)
 

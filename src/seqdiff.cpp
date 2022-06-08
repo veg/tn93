@@ -49,8 +49,10 @@ int main(int argc, const char *argv[]) {
     return 1;
     
   automatonState = 0;
+    
+    
   if (readFASTA(args.input, automatonState, names, sequences, nameLengths,
-                seqLengths, firstSequenceLength) == 1)
+                seqLengths, firstSequenceLength, false, NULL, ':', 1.0, !args.quiet) == 1)
     return 1;
 
   unsigned long sequenceCount = seqLengths.length() - 1;

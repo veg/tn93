@@ -866,7 +866,7 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
                StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, 
                long& firstSequenceLength, bool oneByOne, 
                Vector* sequenceInstances, char sep,
-               double include_prob) {
+               double include_prob, bool progress) {
   
   unsigned long up_to = 0L;
   
@@ -878,9 +878,16 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
   
   if (include_prob < 1.) {
     up_to = RAND_RANGE * include_prob;
-  } 
+  }
+    
+  time_t before, after;
+  if (progress) {
+    time(&before);
+  }
+
   
   bool include_me = true;
+  long read_counter = 0;
     
   flockfile(F);
     
@@ -1003,6 +1010,18 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
                     return 2;
                   }
                   addASequenceToList (sequences, seqLengths, firstSequenceLength, names, nameLengths);
+                  read_counter++;
+                  if (progress && read_counter % 128 == 0) {
+                      time(&after);
+                      cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                              "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                              "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress"
+                              ":"
+                           << setw(8) << read_counter << " sequences read " << setw(12) << std::setprecision(3)
+                           << read_counter / difftime(after, before) << " seqs/sec)";
+
+                      after = before;
+                  }
                 }
                 if (sequenceInstances == NULL && include_prob < 1.) {
                   include_me = genrand_int32() < up_to;
