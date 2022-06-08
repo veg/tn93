@@ -1011,13 +1011,13 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
                   }
                   addASequenceToList (sequences, seqLengths, firstSequenceLength, names, nameLengths);
                   read_counter++;
-                  if (progress && read_counter % 128 == 0) {
+                  if (progress && read_counter % 1024 == 0) {
                       time(&after);
                       cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
                               "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
                               "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress"
                               ":"
-                           << setw(8) << read_counter << " sequences read " << setw(12) << std::setprecision(3)
+                           << setw(8) << read_counter << " sequences read (" << setw(12) << std::setprecision(3)
                            << read_counter / difftime(after, before) << " seqs/sec)";
 
                       after = before;
