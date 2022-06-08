@@ -96,7 +96,6 @@ add_executable(
 
 
 #set(DEFAULT_COMPILE_OPTIONS -O3 -std=c++14 -funroll-loops )
-
 #set(DEFAULT_COMPILE_OPTIONS -std=c++14 -g -fsanitize=address -O0)
 #set(DEFAULT_LINK_OPTIONS ${DEFAULT_COMPILE_OPTIONS})
 
@@ -104,8 +103,8 @@ add_executable(
 
 #add_definitions(${DEFAULT_COMPILE_OPTIONS})
 
-#add_compile_options (-O3 -std=c++14 -march=native -funroll-loops )
-add_compile_options (-O0 -std=c++14 -g -fsanitize=address)
+add_compile_options (-O3 -std=c++14 -march=native -funroll-loops )
+#add_compile_options (-O3 -std=c++14)
 add_link_options(-O3 -std=c++14 -march=native -funroll-loops)
 
 find_package(OpenMP)
