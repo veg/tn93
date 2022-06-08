@@ -220,8 +220,5 @@ int main(int argc, const char *argv[]) {
   }
     
   delete [] sequence_descriptors;
-  if (args.input != stdin) fclose (args.input);
-  if (args.reference != stdin) fclose (args.reference);
-  if (args.output != stdout)  fclose (args.output);
   return 0;
 }

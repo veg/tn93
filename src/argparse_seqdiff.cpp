@@ -119,6 +119,9 @@ namespace argparse
     
     if ( input && input != stdin)
       fclose (input);
+      
+    if ( reference && reference != stdin)
+     fclose (reference);
     
   }
 
