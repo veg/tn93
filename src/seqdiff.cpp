@@ -8,6 +8,7 @@
 #include "argparse_seqdiff.hpp"
 #include <map>
 #include <vector>
+#include<algorithm>
 
 using namespace std;
 using namespace argparse;
