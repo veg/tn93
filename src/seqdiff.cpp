@@ -175,7 +175,7 @@ int main(int argc, const char *argv[]) {
           }
           
           // write out mutational codes
-          fprintf (args.output, "{\"mutations\" : [");
+          fprintf (args.output, "{\"reference\":\"%s\",\"mutations\" : [", ref_seq);
           auto mutation_string = unique_differences.begin();
           fprintf (args.output, "\"%s\"", (*mutation_string).c_str());
           mutation_string ++;
@@ -219,8 +219,9 @@ int main(int argc, const char *argv[]) {
   }
     
   delete [] sequence_descriptors;
-  fclose (args.input);
-  fclose (args.output);
+  if (args.input != stdin) fclose (args.input);
+  if (args.reference != stdin) fclose (args.reference);
+  if (args.output != stdout)  fclose (args.output);
   return 0;
 
   /*if (args.cluster_type == all) {
