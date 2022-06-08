@@ -176,7 +176,9 @@ int main(int argc, const char *argv[]) {
           }
           
           // write out mutational codes
-          fprintf (args.output, "{\"reference\":\"%s\",\"mutations\" : [", ref_seq);
+          fprintf (args.output, "{\"reference\":\"");
+          dump_fasta (ref_seq, firstSequenceLength, args.output, false, false,0L,0L);
+          fprintf (args.output, "\",\"mutations\" : [");
           auto mutation_string = unique_differences.begin();
           fprintf (args.output, "\"%s\"", (*mutation_string).c_str());
           mutation_string ++;
