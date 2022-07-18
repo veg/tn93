@@ -12,6 +12,8 @@ set(CMAKE_CONFIGURATION_TYPES Release)
 # SET VERSION FROM FILE
 file (STRINGS "VERSION.txt" VERSION_NUMBER)
 add_definitions (-DVERSION_NUMBER=\"${VERSION_NUMBER}\")
+add_compile_options (-O3 -std=c++14 -march=native -funroll-loops )
+add_link_options(-O3 -std=c++14 -march=native -funroll-loops)
 
 include_directories(
     src/
@@ -86,13 +88,22 @@ add_executable(
     src/argparse_fasta_diff.cpp
 )
 
-set(DEFAULT_COMPILE_OPTIONS -O3 -std=c++14 -funroll-loops )
-set(DEFAULT_LINK_OPTIONS ${DEFAULT_COMPILE_OPTIONS})
+add_executable(
+    seqdiff
+    src/seqdiff.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+    src/argparse_seqdiff.cpp
+)
 
-add_definitions(${DEFAULT_COMPILE_OPTIONS})
+
+#set(DEFAULT_COMPILE_OPTIONS -O3 -std=c++14 -funroll-loops )
+#set(DEFAULT_COMPILE_OPTIONS -std=c++14 -g -fsanitize=address -O0)
+#set(DEFAULT_LINK_OPTIONS ${DEFAULT_COMPILE_OPTIONS})
 
 
-#add_compile_options (-O3 -std=c++14 -march=native -funroll-loops )
+
+#add_definitions(${DEFAULT_COMPILE_OPTIONS})
 
 find_package(OpenMP)
 
@@ -105,6 +116,7 @@ if(${OPENMP_FOUND})
    target_link_libraries(readreduce PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(fasta_diff PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(ShortestPathTN93 PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
+   target_link_libraries(seqdiff PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
 endif(${OPENMP_FOUND})
 
 
@@ -141,6 +153,12 @@ install(
 
 install(
     TARGETS fasta_diff
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
+
+install(
+    TARGETS seqdiff
 	RUNTIME DESTINATION bin
 	OPTIONAL
 )

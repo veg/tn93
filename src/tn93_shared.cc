@@ -588,19 +588,17 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
             if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
               integer_counts [c1][c2] ++;
             } else { // not both resolved
-              if (c1 == GAP || c2 == GAP) {
-                continue;
+              if (c1 != GAP && c2 != GAP) {
+                ambiguityHandler (c1,c2);
               }
-              ambiguityHandler (c1,c2);
             }
             
             if (__builtin_expect(c3 < 4 && c4 < 4, 1)) {
               integer_counts2 [c3][c4] ++;
             } else { // not both resolved
-              if (c3 == GAP || c4 == GAP) {
-                continue;
+              if (c3 != GAP && c4 != GAP) {
+                ambiguityHandler (c3,c4);
               }
-              ambiguityHandler (c3,c4);
             }
         }
           
@@ -782,6 +780,56 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   return dist <= 0. ? 0. : dist; // this is to avoid returning -0
 }
 
+/*---------------------------------------------------------------------------------------------------- */
+
+inline long pack_difference (long location, unsigned alt) {
+    return (location << 8) + alt;
+}
+
+
+/*---------------------------------------------------------------------------------------------------- */
+
+long        computeDifferences (const char * __restrict__ s1,
+                                const char * __restrict__ s2,
+                                const unsigned long L,
+                                const char matchMode,
+                                Vector & result,
+                                const sequence_gap_structure * sequence_descriptor1,
+                                const sequence_gap_structure * sequence_descriptor2) {
+    
+
+    if (sequence_descriptor1 && sequence_descriptor2) {
+      
+      unsigned long first_nongap = MIN  (sequence_descriptor1->first_nongap,   sequence_descriptor2->first_nongap),
+                    last_nongap  = MAX  (sequence_descriptor1->last_nongap,    sequence_descriptor2->last_nongap);
+//#pragma omp critical
+//      cout << first_nongap << " " << last_nongap << " " << span_start << " " << span_end << endl;
+        
+      if (matchMode == INFORMATIVE) {
+          for (long p = first_nongap; p < last_nongap; p++) {
+              unsigned c1 = s1[p],
+                       c2 = s2[p];
+              
+              if (c1 != c2) {
+                  if (c2 != N_CHAR && c1 != N_CHAR) {
+                      result.appendValue(pack_difference(p,c2));
+                  }
+              }
+          }
+      } else if (matchMode == MISMATCH) {
+          for (long p = first_nongap; p < last_nongap; p++) {
+              unsigned c1 = s1[p],
+                       c2 = s2[p];
+              
+              if (c1 != c2) {
+                  result.appendValue(pack_difference(p,c2));
+              }
+          }
+      }
+    }
+    
+    return result.length();
+}
 
   //---------------------------------------------------------------
 
@@ -816,7 +864,7 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
                StringBuffer& sequences, Vector &nameLengths, Vector &seqLengths, 
                long& firstSequenceLength, bool oneByOne, 
                Vector* sequenceInstances, char sep,
-               double include_prob) {
+               double include_prob, bool progress) {
   
   unsigned long up_to = 0L;
   
@@ -828,9 +876,16 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
   
   if (include_prob < 1.) {
     up_to = RAND_RANGE * include_prob;
-  } 
+  }
+    
+  time_t before, after;
+  if (progress) {
+    time(&before);
+  }
+
   
   bool include_me = true;
+  long read_counter = 0;
     
   flockfile(F);
     
@@ -953,6 +1008,18 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
                     return 2;
                   }
                   addASequenceToList (sequences, seqLengths, firstSequenceLength, names, nameLengths);
+                  read_counter++;
+                  if (progress && read_counter % 1024 == 0) {
+                      time(&after);
+                      cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                              "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                              "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress"
+                              ":"
+                           << setw(8) << read_counter << " sequences read (" << setw(12) << std::setprecision(3)
+                           << read_counter / difftime(after, before) << " seqs/sec)";
+
+                      after = before;
+                  }
                 }
                 if (sequenceInstances == NULL && include_prob < 1.) {
                   include_me = genrand_int32() < up_to;
