@@ -588,19 +588,17 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
             if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
               integer_counts [c1][c2] ++;
             } else { // not both resolved
-              if (c1 == GAP || c2 == GAP) {
-                continue;
+              if (c1 != GAP && c2 != GAP) {
+                ambiguityHandler (c1,c2);
               }
-              ambiguityHandler (c1,c2);
             }
             
             if (__builtin_expect(c3 < 4 && c4 < 4, 1)) {
               integer_counts2 [c3][c4] ++;
             } else { // not both resolved
-              if (c3 == GAP || c4 == GAP) {
-                continue;
+              if (c3 != GAP && c4 != GAP) {
+                ambiguityHandler (c3,c4);
               }
-              ambiguityHandler (c3,c4);
             }
         }
           

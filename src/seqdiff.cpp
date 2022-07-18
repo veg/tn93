@@ -112,8 +112,8 @@ int main(int argc, const char *argv[]) {
                   "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
                   "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress"
                   ":"
-               << setw(8) << percentDone << "% " << setw(12) << std::setprecision(3)
-               << seq_id / difftime(after, before) << " evals/sec)";
+               << setw(8) << percentDone << "% (" << setw(12) << std::setprecision(3)
+               << seq_id / difftime(after, before) << " seqs/sec)";
 
           after = before;
         }
