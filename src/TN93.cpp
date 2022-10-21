@@ -263,9 +263,9 @@ int main(int argc, const char *argv[]) {
   if (args.format != hyphy) {
     if (args.do_count == false) {
       if (args.format == csv)
-        fprintf(args.output, "ID1,ID2,Distance\n");
+        fprintf(args.output, "ID1%cID2%cDistance\n", args.delimiter, args.delimiter);
       else
-        fprintf(args.output, "Seq1,Seq2,Distance\n");
+        fprintf(args.output, "Seq1%cSeq2%cDistance\n", args.delimiter, args.delimiter);
     }
   } else {
     distanceMatrix = new double[sequenceCount * sequenceCount];
@@ -375,11 +375,11 @@ int main(int argc, const char *argv[]) {
           // to self as 0
           if (args.format == csv) {
 #pragma omp critical
-            fprintf(args.output, "%s,%s,%g\n", n1, n1, 0.0);
+            fprintf(args.output, "%s%c%s%c%g\n", n1, args.delimiter, n1, args.delimiter, 0.0);
           } else {
             if (args.format == csvn) {
 #pragma omp critical
-              fprintf(args.output, "%ld,%ld,%g\n", mapped_id, mapped_id, 0.0);
+              fprintf(args.output, "%ld%c%ld%c%g\n", mapped_id, args.delimiter, mapped_id, args.delimiter, 0.0);
             }
           }
         }
@@ -425,12 +425,12 @@ int main(int argc, const char *argv[]) {
           if (!args.do_count) {
             if (args.format == csv) {
 #pragma omp critical
-              fprintf(args.output, "%s,%s,%g\n", n1,
-                      stringText(names, nameLengths, mapped_id2), thisD);
+              fprintf(args.output, "%s%c%s%c%g\n", n1,args.delimiter,
+                      stringText(names, nameLengths, mapped_id2), args.delimiter,thisD);
             } else {
               if (args.format == csvn) {
 #pragma omp critical
-                fprintf(args.output, "%ld,%ld,%g\n", mapped_id, mapped_id2,
+                fprintf(args.output, "%ld%c%ld%c%g\n", mapped_id, args.delimiter, mapped_id2, args.delimiter,
                         thisD);
 
               } else {

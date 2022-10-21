@@ -12,6 +12,7 @@
 #define DEFAULT_COUNTS_IN_NAME    ':'
 #define DEFAULT_OVERLAP           100
 #define DEFAULT_INCLUDE_PROB      1.0
+#define DEFAULT_DELIMITER         ','
 
 #ifndef VERSION_NUMBER
 #define VERSION_NUMBER            "UNKNOWN"
@@ -56,6 +57,7 @@ namespace argparse
         double          include_prob;
         char            *ambigs_to_resolve;
         double          resolve_fraction;
+        char            delimiter;
       
         args_t( int, const char ** );
         ~args_t();
@@ -69,6 +71,7 @@ namespace argparse
         void parse_overlap  ( const char * );
         void parse_format   ( const char * );
         void parse_ambig    ( const char * );
+        void parse_delimiter      ( const char * );
         void parse_include_prob   ( const char * );
         void parse_counts_in_name
                             ( const char * );
