@@ -31,6 +31,7 @@ namespace argparse
   "[-c] "
   "[-0] "
   "[-q] "
+  "[-D DELIMITER]"
   "[FASTA]\n";
   
   const char help_msg[] =
@@ -68,6 +69,7 @@ namespace argparse
   "  -m                       compute inter- and intra-population means suitable for FST caclulations\n"
   "                           only applied when -s is used to provide a second file\n"
   "  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = " TO_STR ( DEFAULT_INCLUDE_PROB) ")\n"
+  "  -D DELIMITER             use this character as a delimiter in the output column-file (a character, default = " TO_STR ( DEFAULT_DELIMITER) ")\n"
   "  -0                       report distances between each sequence and itself (as 0); this is useful to ensure every sequence\n"
   "                           in the input file appears in the output, e.g. for network construction to contrast clustered/unclustered\n"
   "  -q                       do not report progress updates and other diagnostics to stderr \n"
@@ -126,7 +128,8 @@ namespace argparse
   counts_in_name ( DEFAULT_COUNTS_IN_NAME ),
   include_prob( DEFAULT_INCLUDE_PROB ),
   ambigs_to_resolve(NULL),
-  resolve_fraction(DEFAULT_FRACTION)
+  resolve_fraction(DEFAULT_FRACTION),
+  delimiter (DEFAULT_DELIMITER)
   {
       // skip arg[0], it's just the program name
     for (int i = 1; i < argc; ++i ) {
@@ -149,6 +152,7 @@ namespace argparse
         else if (  arg[1] == 's')  parse_second_in( next_arg (i, argc, argv) );
         else if (  arg[1] == 'd')  parse_counts_in_name( next_arg (i, argc, argv) );
         else if (  arg[1] == 'u')  parse_include_prob( next_arg (i, argc, argv) );
+        else if (  arg[1] == 'D')  parse_delimiter ( next_arg (i, argc, argv) );
         else if (  arg[1] == 'b')  parse_bootstrap();
         else if (  arg[1] == 'r')  parse_bootstrap_two_files ();
         else if (  arg[1] == 'c')  parse_count();
@@ -275,19 +279,29 @@ namespace argparse
       strcpy (ambigs_to_resolve, str);
     }
   }
-  
-  void args_t::parse_format( const char * str )
-  {
-    if (!strcmp (str, "csv")) {
-      format = csv;
-    } else if (!strcmp (str, "csvn")) {
-      format = csvn;
-    } else if (!strcmp (str, "hyphy")) {
-      format = hyphy;
-    } else  {
-      ERROR( "invalid output format: %s", str );
+
+  void args_t::parse_delimiter( const char * str )
+    {
+      if (strlen (str) == 1) {
+          delimiter = str[0];
+      } else {
+          ERROR( "invalid output format: %s", str );
+      }
     }
-  }
+  
+
+    void args_t::parse_format( const char * str )
+    {
+      if (!strcmp (str, "csv")) {
+        format = csv;
+      } else if (!strcmp (str, "csvn")) {
+        format = csvn;
+      } else if (!strcmp (str, "hyphy")) {
+        format = hyphy;
+      } else  {
+        ERROR( "invalid output format: %s", str );
+      }
+    }
   
   void args_t::parse_count()
   {
