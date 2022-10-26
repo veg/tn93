@@ -451,11 +451,12 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
       if (c1 < 4UL) { // c1 resolved and c2 is not
         if (matchMode != SKIP) {
           if (resolutionsCount[c2] > 0.) {
-            if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c2]))
-              if (resolutions[c2][c1]) {
-                ambig_count ++;
-                integer_counts[c1][c1] ++;
-                return;
+              if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c2])) {
+                  if (resolutions[c2][c1]) {
+                      ambig_count ++;
+                      integer_counts[c1][c1] ++;
+                      return;
+                  }
               }
             
             if (resolutions[c2][0])
@@ -481,6 +482,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
                 }
               }
               
+                
               if (resolutions[c1][0])
                 float_counts[0][c2] += resolutionsCount[c1];
               if (resolutions[c1][1])
@@ -582,9 +584,9 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         unsigned long p = first_nongap;
           
         for (; p + 2 <= span_start; p+=2) {
-            unsigned c1 = s1[p], c2 = s2[p];
+            unsigned c1 = s1[p],   c2 = s2[p];
             unsigned c3 = s1[p+1], c4 = s2[p+1];
-
+            
             if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
               integer_counts [c1][c2] ++;
             } else { // not both resolved
@@ -603,8 +605,8 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         }
           
         if (p < span_start) {
-            unsigned c1 = s1[p+1];
-            unsigned c2 = s2[p+1];
+            unsigned c1 = s1[p];
+            unsigned c2 = s2[p];
 
             if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
               integer_counts [c1][c2] ++;
@@ -638,7 +640,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
           
         for (unsigned long p = span_end + 1UL; p <= last_nongap; p++) {
           unsigned c1 = s1[p], c2 = s2[p];
-          
+ 
           if (__builtin_expect(c1 < 4UL && c2 < 4UL,1)) {
             integer_counts [c1][c2] ++;
           } else { // not both resolved
