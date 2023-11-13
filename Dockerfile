@@ -1,6 +1,6 @@
-# Docker image for tn93
+# Docker image for a tn93 development environment
 FROM oraclelinux:8
 
-# Set up environment and install dependencies (NEED TO CHANGE TO ORACLE)
-#RUN apt-get update && apt-get -y upgrade && \
-#    DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y cmake g++ git make
+# Set up environment and install dependencies
+RUN yum -y check-update && yum -y update && \
+    yum install -y cmake gcc-c++ git make
