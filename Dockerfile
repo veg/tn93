@@ -1,5 +1,5 @@
 # Docker image for tn93
-FROM oraclelinux:8-slim
+FROM oraclelinux:8
 
 # Set up environment and install dependencies (NEED TO CHANGE TO ORACLE)
 #RUN apt-get update && apt-get -y upgrade && \
