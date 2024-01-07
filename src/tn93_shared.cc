@@ -129,7 +129,6 @@ const  double   resolutionsCount[] = { 1.f,
   1./2.f, // R
   1./2.f, // Y
   1./2.f, // S
-  1./2.f, // S
   1./2.f, // W
   1./2.f, // K
   1./2.f, // M
