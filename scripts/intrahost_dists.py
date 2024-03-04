@@ -43,14 +43,13 @@ def load_fasta(fn):
     return seqs
 
 # return dictionary where seqs_per_person[person] = set of sequence IDs from `person`
-# this is currently a dummy implementation that clones each sequence 10 times (AND MODIFIES SEQS ACCORDINGLY!!!)
-# TODO in practice, replace this with a function that actually loads the true person-to-sequences mapping
-def load_seqs_per_person_dummy(seqs):
-    seqs_per_person = dict(); orig_keys = set(seqs.keys())
-    for k in orig_keys:
-        seqs_per_person[k] = {k} # first copy is the original
-        for i in range(9):       # create 9 more copies
-            k2 = '%s.CLONE.%d' % (k,i); seqs_per_person[k].add(k2); seqs[k2] = seqs[k]
+def load_seqs_per_person(seqs):
+    seqs_per_person = dict()
+    for k in seqs:
+        person = k.lstrip('>').split('|')[0].strip()
+        if person not in seqs_per_person:
+            seqs_per_person[person] = set()
+        seqs_per_person[person].add(k)
     return seqs_per_person
 
 # calculate all pairwise distances between sequences from the same individual (this is the main logic of this script)
@@ -58,6 +57,8 @@ def load_seqs_per_person_dummy(seqs):
 # but we could easily parallelize across people as well
 def calc_intrahost_dists(seqs, seqs_per_person):
     for person_num, person in enumerate(seqs_per_person):
+        if len(seqs_per_person[person]) < 2:
+            continue # skip people with just 1 sequence
         curr_fasta = '\n'.join('%s\n%s' % (k,seqs[k]) for k in seqs_per_person[person])
         o = check_output(['tn93', '-t', '0.03', '-l', '1'], stderr=DEVNULL, input=curr_fasta, encoding='ascii')
         if person_num == 0:
@@ -70,5 +71,5 @@ def calc_intrahost_dists(seqs, seqs_per_person):
 if __name__ == "__main__":
     args = parse_args()
     seqs = load_fasta(args.input)
-    seqs_per_person = load_seqs_per_person_dummy(seqs) # TODO replace with true way to determine which seqs come from the same person
+    seqs_per_person = load_seqs_per_person(seqs)
     calc_intrahost_dists(seqs, seqs_per_person)
