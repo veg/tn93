@@ -75,10 +75,10 @@ def calc_intrahost_dists(seqs, seqs_per_person, out_fn, tn93_t, tn93_a, tn93_g):
         output = open(out_fn, 'w')
 
     # build tn93 command
-    tn93_command = TN93_BASE_COMMAND # start with base command
-    tn93_command += ['-t', tn93_t]   # add max distance threshold
-    tn93_command += ['-a', tn93_a]   # add ambig resolve
-    tn93_command += ['-g', tn93_g]   # add ambiguity fraction
+    tn93_command = TN93_BASE_COMMAND    # start with base command
+    tn93_command += ['-t', str(tn93_t)] # add max distance threshold
+    tn93_command += ['-a', str(tn93_a)] # add ambig resolve
+    tn93_command += ['-g', str(tn93_g)] # add ambiguity fraction
 
     # run on all people
     for person_num, person in enumerate(seqs_per_person):
