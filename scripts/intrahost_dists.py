@@ -20,6 +20,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-i', '--input', required=False, type=str, default='stdin', help="Input FASTA")
     parser.add_argument('-t', '--threshold', required=False, type=float, default=1., help="TN93 Distance Threshold")
+    parser.add_argument('-a', '--ambigs', required=False, type=str, default='resolve', help="TN93 Resolve Ambigs")
     parser.add_argument('-g', '--ambig_fraction', required=False, type=float, default=1., help="TN93 Ambiguity Fraction")
     parser.add_argument('-o', '--output', required=False, type=str, default='stdout', help="Output File")
     args = parser.parse_args()
@@ -64,7 +65,7 @@ def load_seqs_per_person(seqs):
 # calculate all pairwise distances between sequences from the same individual (this is the main logic of this script)
 # currently not parallelizing across people because tn93 parallelizes pairwise distance calculations,
 # but we could easily parallelize across people as well
-def calc_intrahost_dists(seqs, seqs_per_person, out_fn, tn93_t, tn93_g):
+def calc_intrahost_dists(seqs, seqs_per_person, out_fn, tn93_t, tn93_a, tn93_g):
     # open output file
     if out_fn.strip().lower() == 'stdout':
         from sys import stdout as output
@@ -76,6 +77,7 @@ def calc_intrahost_dists(seqs, seqs_per_person, out_fn, tn93_t, tn93_g):
     # build tn93 command
     tn93_command = TN93_BASE_COMMAND # start with base command
     tn93_command += ['-t', tn93_t]   # add max distance threshold
+    tn93_command += ['-a', tn93_a]   # add ambig resolve
     tn93_command += ['-g', tn93_g]   # add ambiguity fraction
 
     # run on all people
@@ -96,4 +98,4 @@ if __name__ == "__main__":
     args = parse_args()
     seqs = load_fasta(args.input)
     seqs_per_person = load_seqs_per_person(seqs)
-    calc_intrahost_dists(seqs, seqs_per_person, args.threshold, args.ambig_fraction)
+    calc_intrahost_dists(seqs, seqs_per_person, args.output, args.threshold, args.ambigs, args.ambig_fraction)
