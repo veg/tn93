@@ -87,10 +87,10 @@ def calc_intrahost_dists(seqs, seqs_per_person, out_fn, tn93_t, tn93_a, tn93_g):
         curr_fasta = '\n'.join('%s\n%s' % (k,seqs[k]) for k in seqs_per_person[person])
         o = check_output(tn93_command, stderr=DEVNULL, input=curr_fasta, encoding='ascii')
         if person_num == 0:
-            output.write(o)
+            output.write(o.strip()); output.write('\n')
         else:
             for l in o.splitlines()[1:]:
-                output.write(l)
+                output.write(l.strip()); output.write('\n')
     output.close()
 
 # run tool
