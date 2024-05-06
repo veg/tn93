@@ -81,6 +81,14 @@ add_executable(
 )
 
 add_executable(
+    fasta_digest
+    src/fasta_digest.cpp
+    src/stringBuffer.cc
+    src/tn93_shared.cc
+    src/argparse_fasta_digest.cpp
+)
+
+add_executable(
     fasta_diff
     src/fasta_diff.cpp
     src/stringBuffer.cc
@@ -163,10 +171,11 @@ install(
 	OPTIONAL
 )
 
-#add_custom_target(TN93
-#  DEPENDS tn93
-#)
-
+install(
+    TARGETS fasta_digest
+	RUNTIME DESTINATION bin
+	OPTIONAL
+)
 
 install(
     TARGETS ShortestPathTN93

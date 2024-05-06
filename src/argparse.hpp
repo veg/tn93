@@ -54,6 +54,7 @@ namespace argparse
         bool            do_count;
         bool            quiet;
         bool            do_fst;
+        bool            skip_header;
         bool            report_self;
         char            counts_in_name;
         double          include_prob;
@@ -82,6 +83,7 @@ namespace argparse
         void parse_bootstrap_two_files( void );
         void parse_count    ( void );
         void parse_quiet    ( void );
+        void parse_no_header    ( void );
         void parse_fst      ( void );
         void parse_fraction ( const char *);
       
