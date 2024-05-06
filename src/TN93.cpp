@@ -421,7 +421,7 @@ int main(int argc, const char *argv[]) {
                               HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count);
 
        
-        if (thisD >= -1.e-10 && thisD <= args.distance) {
+        if (thisD >= args.min_distance && thisD <= args.distance) {
           local_links_found += weighted_count;
           // char *s2 = stringText(sequences, seqLengths, seq1);
           if (!args.do_count) {
