@@ -708,15 +708,19 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   }
   
   
-  for (unsigned long c1 = 0; c1 < 4; c1++) {
-    for (unsigned long c2 = 0; c2 < 4; c2++) {
+  //printf ("\n");
+  for (int c1 = 0; c1 < 4; c1++) {
+    //printf ("\n");
+    for (int c2 = 0; c2 < 4; c2++) {
       double pc = (float_counts[c1][c2] += (double)(integer_counts[c1][c2] + integer_counts2[c1][c2]));
+      //printf ("%12.2g\t", pc);
       totalNonGap   += pc;
       nucFreq [c1]  += pc;
       nucFreq [c2]  += pc;
     }
   }
-  
+  //printf ("\ntotalNonGap = %g\n", totalNonGap);
+
   if (totalNonGap <= min_overlap) {
     return -1.;
   }

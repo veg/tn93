@@ -262,10 +262,12 @@ int main(int argc, const char *argv[]) {
 
   if (args.format != hyphy) {
     if (args.do_count == false) {
-      if (args.format == csv)
-        fprintf(args.output, "ID1%cID2%cDistance\n", args.delimiter, args.delimiter);
-      else
-        fprintf(args.output, "Seq1%cSeq2%cDistance\n", args.delimiter, args.delimiter);
+        if (args.skip_header == false) {
+            if (args.format == csv)
+                fprintf(args.output, "ID1%cID2%cDistance\n", args.delimiter, args.delimiter);
+            else
+                fprintf(args.output, "Seq1%cSeq2%cDistance\n", args.delimiter, args.delimiter);
+        }
     }
   } else {
     distanceMatrix = new double[sequenceCount * sequenceCount];

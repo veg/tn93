@@ -29,6 +29,7 @@ namespace argparse
   "[-b] "
   "[-r] "
   "[-c] "
+  "[-n] "
   "[-0] "
   "[-q] "
   "[-D DELIMITER]"
@@ -66,6 +67,7 @@ namespace argparse
   "  -r                       if -b is specified AND -s is supplied, using -r will bootstrap across sites\n"
   "                           instead of allocating sequences to 'compartments' randomly\n"
   "  -c                       only count the pairs below a threshold, do not write out all the pairs \n"
+  "  -n                       if set, do NOT write out headers for delimited files (default is to write) \n"
   "  -m                       compute inter- and intra-population means suitable for FST caclulations\n"
   "                           only applied when -s is used to provide a second file\n"
   "  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = " TO_STR ( DEFAULT_INCLUDE_PROB) ")\n"
@@ -124,6 +126,7 @@ namespace argparse
   do_count( false ),
   quiet( false ),
   do_fst( false ),
+  skip_header ( false ),
   report_self ( false ),
   counts_in_name ( DEFAULT_COUNTS_IN_NAME ),
   include_prob( DEFAULT_INCLUDE_PROB ),
@@ -156,6 +159,7 @@ namespace argparse
         else if (  arg[1] == 'b')  parse_bootstrap();
         else if (  arg[1] == 'r')  parse_bootstrap_two_files ();
         else if (  arg[1] == 'c')  parse_count();
+        else if (  arg[1] == 'n')  parse_no_header ();
         else if (  arg[1] == 'q')  parse_quiet();
         else if (  arg[1] == 'm')  parse_fst();
         else if (  arg[1] == '0')  parse_report_self();
@@ -307,7 +311,12 @@ namespace argparse
   {
     do_count = true;
   }
-  
+
+  void args_t::parse_no_header()
+  {
+    skip_header = true;
+  }
+
   void args_t::parse_bootstrap()
   {
     do_bootstrap = true;
