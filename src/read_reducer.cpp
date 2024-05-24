@@ -123,13 +123,7 @@ void handle_a_sequence (StringBuffer& current_sequence, StringBuffer& current_cl
     unsigned long currently_defined_clusters = sequence_lengths.length()-1;
     long try_cluster = -1;
     
-        #ifdef _OPENMP
-          #if _OPENMP >= 200805
-            #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster, sequence_lengths, current_sequence, current_clusters, firstSequenceLength, min_overlap)
-          #else 
-            #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster)
-          #endif
-        #endif
+        #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster, sequence_lengths, current_sequence, current_clusters, firstSequenceLength, min_overlap)
         for (long cluster_index = 0; cluster_index < currently_defined_clusters; cluster_index ++) {
             #pragma omp flush (try_cluster)
             if (try_cluster < 0) {
