@@ -24,15 +24,18 @@ set(TN93_SOURCES src/TN93.cpp src/stringBuffer.cc src/tn93_shared.cc src/argpars
 add_executable(tn93 ${TN93_SOURCES})
 target_link_libraries(tn93 PRIVATE ${DEFAULT_LIBRARIES})
 
-# Add statically linked tn93 target
-add_executable(tn93_static.singlethread ${TN93_SOURCES})
-target_link_options(tn93_static.singlethread PRIVATE -static-libgcc -static-libstdc++ -pthread -lm -lc)
+# Check if the compiler is GCC
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # Add statically linked tn93 target
+    add_executable(tn93_static.singlethread ${TN93_SOURCES})
+    target_link_options(tn93_static.singlethread PRIVATE -static-libgcc -static-libstdc++ -pthread -lm -lc)
 
-# Add mixed statically linked tn93 target with static OpenMP
-add_executable(tn93_mixed_openmp ${TN93_SOURCES})
-target_link_options(tn93_mixed_openmp PRIVATE -static-libgcc -static-libstdc++ -pthread -lm -lc)
+    # Add mixed statically linked tn93 target with static OpenMP
+    add_executable(tn93_mixed_openmp ${TN93_SOURCES})
+    target_link_options(tn93_mixed_openmp PRIVATE -static-libgcc -static-libstdc++ -pthread -lm -lc)
+endif()
 
-find_package(OpenMP REQUIRED)
+find_package(OpenMP)
 
 if(OpenMP_FOUND)
     # Link OpenMP dynamically for dynamic target
@@ -71,10 +74,24 @@ add_dynamic_executable(fasta_diff ${FASTA_DIFF_SOURCES})
 add_dynamic_executable(seqdiff ${SEQDIFF_SOURCES})
 
 # Install targets
-install(TARGETS tn93 tn93_static.singlethread tn93_mixed_openmp tn93-cluster selectreads seqcoverage readreduce fasta_diff seqdiff fasta_digest ShortestPathTN93 nucfreqsfasta
+install(TARGETS tn93 tn93-cluster selectreads seqcoverage readreduce fasta_diff seqdiff fasta_digest ShortestPathTN93 nucfreqsfasta
     RUNTIME DESTINATION bin
     OPTIONAL
 )
+
+if(TARGET tn93_static.singlethread)
+    install(TARGETS tn93_static.singlethread
+        RUNTIME DESTINATION bin
+        OPTIONAL
+    )
+endif()
+
+if(TARGET tn93_mixed_openmp)
+    install(TARGETS tn93_mixed_openmp
+        RUNTIME DESTINATION bin
+        OPTIONAL
+    )
+endif()
 
 add_custom_target(TN93SP
     DEPENDS ShortestPathTN93
