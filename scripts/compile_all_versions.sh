@@ -10,5 +10,4 @@ wget -qO- "https://api.github.com/repos/veg/tn93/releases" | grep '"tarball_url"
     mv tn93 "../tn93.$version"
     cd ..
     rm -rf veg-tn93-*
-    exit # TODO DELETE
 done
