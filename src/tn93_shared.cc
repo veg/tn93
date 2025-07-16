@@ -170,7 +170,7 @@ const  double   resolutionsCount_AA[] = {
 };
 
 
-char validFlags [256];
+signed char validFlags [256];
 
   //---------------------------------------------------------------
 
