@@ -13,6 +13,8 @@ using namespace argparse;
 #define HISTOGRAM_BINS 200
 #define HISTOGRAM_SLICE ((double)HISTOGRAM_BINS)
 
+#define BUFFER_FLUSH_LENGTH 8192
+
 char sep = ':';
 
 //---------------------------------------------------------------
@@ -342,6 +344,8 @@ int main(int argc, const char *argv[]) {
         histogram_counts[k][r] = 0;
       }
     }
+    
+    StringBuffer local_buffer;
 
 #pragma omp for schedule(guided)
     for (long seq1 = 0; seq1 < upperBound; seq1++) {
@@ -351,6 +355,8 @@ int main(int argc, const char *argv[]) {
 
       char *n1 = stringText(names, nameLengths, mapped_id),
            *s1 = stringText(sequences, seqLengths, mapped_id);
+        
+      const unsigned long n1L = stringLength (nameLengths, mapped_id);
 
       long lowerBound = cross_comparison_only ? seqLengthInFile1 : seq1 + 1L,
            compsSkipped = 0, local_links_found = 0,
@@ -376,12 +382,21 @@ int main(int argc, const char *argv[]) {
           // if this is a single file run and -0 selected, then report distance
           // to self as 0
           if (args.format == csv) {
-#pragma omp critical
-            fprintf(args.output, "%s%c%s%c%g\n", n1, args.delimiter, n1, args.delimiter, 0.0);
+              char float_buffer [128];
+              unsigned written = snprintf(float_buffer, 128, "%g",0.0);
+                
+              local_buffer.appendBuffer(n1, n1L);
+              local_buffer.appendChar (args.delimiter);
+              local_buffer.appendBuffer(n1, n1L);
+              local_buffer.appendChar (args.delimiter);
+              local_buffer.appendChar (args.delimiter);
+              local_buffer.appendBuffer (float_buffer, written);
+              local_buffer.appendChar ('\n');
           } else {
             if (args.format == csvn) {
-#pragma omp critical
-              fprintf(args.output, "%ld%c%ld%c%g\n", mapped_id, args.delimiter, mapped_id, args.delimiter, 0.0);
+              char link_buffer[1024];
+              int written = snprintf(link_buffer, 1024, "%ld%c%ld%c%g\n", mapped_id, args.delimiter, mapped_id, args.delimiter, 0.0);
+              local_buffer.appendBuffer(link_buffer, written);
             }
           }
         }
@@ -414,11 +429,14 @@ int main(int argc, const char *argv[]) {
                               args.overlap, &(histogram_counts[which_bin][0]),
                               HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count,
                               1L, &sequence_descriptors[mapped_id],
-                              &sequence_descriptors[mapped_id2])
+                              &sequence_descriptors[mapped_id2],
+                              args.hamming_skip ? args.distance : -1.0)
                 : computeTN93(s1, stringText(sequences, seqLengths, mapped_id2),
                               firstSequenceLength, resolutionOption, randFlag,
                               args.overlap, &(histogram_counts[which_bin][0]),
-                              HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count);
+                              HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count,
+                              1L, NULL, NULL,
+                              args.hamming_skip ? args.distance : -1.0);
 
        
         if (thisD >= args.min_distance && thisD <= args.distance) {
@@ -426,22 +444,42 @@ int main(int argc, const char *argv[]) {
           // char *s2 = stringText(sequences, seqLengths, seq1);
           if (!args.do_count) {
             if (args.format == csv) {
-#pragma omp critical
-              fprintf(args.output, "%s%c%s%c%g\n", n1,args.delimiter,
-                      stringText(names, nameLengths, mapped_id2), args.delimiter,thisD);
+              char float_buffer [128];
+              unsigned written = snprintf(float_buffer, 128, "%g",thisD);
+                
+              local_buffer.appendBuffer(n1, n1L);
+              local_buffer.appendChar (args.delimiter);
+              local_buffer.appendBuffer (stringText(names, nameLengths, mapped_id2), stringLength(nameLengths, mapped_id2));
+              local_buffer.appendChar (args.delimiter);
+              local_buffer.appendBuffer (float_buffer, written);
+              local_buffer.appendChar ('\n');
+   
             } else {
               if (args.format == csvn) {
-#pragma omp critical
-                fprintf(args.output, "%ld%c%ld%c%g\n", mapped_id, args.delimiter, mapped_id2, args.delimiter,
+                char link_buffer[1024];
+                int written = snprintf(link_buffer, 1024, "%ld%c%ld%c%g\n", mapped_id, args.delimiter, mapped_id2, args.delimiter,
                         thisD);
+                local_buffer.appendBuffer(link_buffer, written);
+                  
 
               } else {
-                distanceMatrix[mapped_id * sequenceCount + mapped_id2] = thisD;
-                distanceMatrix[mapped_id2 * sequenceCount + mapped_id] = thisD;
+                #pragma omp critical
+                {
+                  distanceMatrix[mapped_id * sequenceCount + mapped_id2] = thisD;
+                  distanceMatrix[mapped_id2 * sequenceCount + mapped_id] = thisD;
+                }
               }
+            }
+            if (local_buffer.length() > BUFFER_FLUSH_LENGTH) {
+                #pragma omp critical
+                {
+                    fwrite (local_buffer.getString(), sizeof (char), local_buffer.length(), args.output);
+                }
+                local_buffer.resetString();
             }
           }
         }
+
         if (thisD <= -0.5) {
           compsSkipped += 1;
         } else {
@@ -486,6 +524,14 @@ int main(int argc, const char *argv[]) {
         }
       }
     }
+    
+    if (local_buffer.length() > 0) {
+        #pragma omp critical
+        {
+            fwrite (local_buffer.getString(), sizeof (char), local_buffer.length(), args.output);
+        }
+    }
+
 #pragma omp critical
     {
       for (unsigned long r = 0; r < 3; r++) {

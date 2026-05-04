@@ -56,6 +56,7 @@ namespace argparse
         bool            do_fst;
         bool            skip_header;
         bool            report_self;
+        bool            hamming_skip;
         char            counts_in_name;
         double          include_prob;
         char            *ambigs_to_resolve;
@@ -85,6 +86,7 @@ namespace argparse
         void parse_quiet    ( void );
         void parse_no_header    ( void );
         void parse_fst      ( void );
+        void parse_hamming_skip ( void );
         void parse_fraction ( const char *);
       
     };

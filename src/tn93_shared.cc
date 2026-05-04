@@ -421,7 +421,7 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
 /*---------------------------------------------------------------------------------------------------- */
 
 double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap,
-                       unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2, const sequence_gap_structure * sequence_descriptor1, const sequence_gap_structure * sequence_descriptor2) {
+                       unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2, const sequence_gap_structure * sequence_descriptor1, const sequence_gap_structure * sequence_descriptor2, const double threshold) {
   
   bool useK2P   = false;
   unsigned long ambig_count = 0UL;

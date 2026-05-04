@@ -22,7 +22,7 @@ double    computeTransformedTN93 (const unsigned long seq1, const unsigned long 
 
     char *s1 = stringText (sequences, seqLengths, seq1);
 
-    double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, NULL, min_overlap),
+    double thisD = computeTN93(s1, stringText(sequences, seqLengths, seq2), firstSequenceLength, resolutionOption, NULL, min_overlap, NULL, 0.0, 0, 1, 1, NULL, NULL, -1.0),
            d = thisD < 0.?1.e100:exp(thisD*step_penalty)-1.;
 
 

@@ -33,6 +33,7 @@ namespace argparse
   "[-n] "
   "[-0] "
   "[-q] "
+  "[-H] "
   "[-D DELIMITER]"
   "[FASTA]\n";
   
@@ -77,6 +78,7 @@ namespace argparse
   "  -0                       report distances between each sequence and itself (as 0); this is useful to ensure every sequence\n"
   "                           in the input file appears in the output, e.g. for network construction to contrast clustered/unclustered\n"
   "  -q                       do not report progress updates and other diagnostics to stderr \n"
+  "  -H                       use Hamming distance early exit to speed up distance calculations \n"
   "  FASTA                    read sequences to compare from this file (default=stdin)\n";
   
   inline
@@ -131,6 +133,7 @@ namespace argparse
   do_fst( false ),
   skip_header ( false ),
   report_self ( false ),
+  hamming_skip ( false ),
   counts_in_name ( DEFAULT_COUNTS_IN_NAME ),
   include_prob( DEFAULT_INCLUDE_PROB ),
   ambigs_to_resolve(NULL),
@@ -144,6 +147,7 @@ namespace argparse
       if ( arg[0] == '-' && arg[1] == '-' ) {
         if ( !strcmp( &arg[2], "help" ) ) help();
         else if ( !strcmp( &arg[2], "version" ) ) version();
+        else if ( !strcmp( &arg[2], "hamming-skip" ) ) parse_hamming_skip();
         else
           ERROR( "unknown argument: %s", arg );
       }
@@ -165,6 +169,7 @@ namespace argparse
         else if (  arg[1] == 'c')  parse_count();
         else if (  arg[1] == 'n')  parse_no_header ();
         else if (  arg[1] == 'q')  parse_quiet();
+        else if (  arg[1] == 'H')  parse_hamming_skip();
         else if (  arg[1] == 'm')  parse_fst();
         else if (  arg[1] == '0')  parse_report_self();
         else if (  arg[1] == 'g')  parse_fraction( next_arg (i, argc, argv) );
@@ -352,5 +357,9 @@ namespace argparse
   void args_t::parse_report_self()
   {
     report_self = true;
+  }
+  void args_t::parse_hamming_skip()
+  {
+    hamming_skip = true;
   }
 }
