@@ -445,6 +445,22 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   
   long integer_counts  [4][4] = {{0L}, {0L}, {0L}, {0L}};
   long integer_counts2 [4][4] = {{0L}, {0L}, {0L}, {0L}};
+    
+  bool early_exit_check = threshold > 0.0;
+    
+  const long early_exit_check_T = early_exit_check ? (long)(threshold*L) : L;
+    
+  auto check_early_exit = [&] (long TL) -> bool {
+      long differences = 0L;
+      for (int i = 0; i < 4; i++) {
+          for (int j = 0; j < 4; j++) {
+              if (i != j) {
+                  differences += integer_counts[i][j] + integer_counts2[i][j];
+              }
+          }
+      }
+      return differences > TL;
+  };
 
   auto ambiguityHandler = [&] (unsigned c1, unsigned c2) -> void {
       if (c1 < 4UL) { // c1 resolved and c2 is not
@@ -586,7 +602,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
             unsigned c1 = s1[p],   c2 = s2[p];
             unsigned c3 = s1[p+1], c4 = s2[p+1];
             
-            if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
+            if (__builtin_expect((c1 | c2) < 4, 1)) {
               integer_counts [c1][c2] ++;
             } else { // not both resolved
               if (c1 != GAP && c2 != GAP) {
@@ -594,7 +610,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
               }
             }
             
-            if (__builtin_expect(c3 < 4 && c4 < 4, 1)) {
+            if (__builtin_expect((c3 |c4) < 4, 1)) {
               integer_counts2 [c3][c4] ++;
             } else { // not both resolved
               if (c3 != GAP && c4 != GAP) {
@@ -607,7 +623,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
             unsigned c1 = s1[p];
             unsigned c2 = s2[p];
 
-            if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
+            if (__builtin_expect((c1 | c2) < 4, 1)) {
               integer_counts [c1][c2] ++;
             } else { // not both resolved
               if (c1 != GAP && c2 != GAP) {
@@ -617,16 +633,36 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
           
         }
         
+        if (early_exit_check && check_early_exit(early_exit_check_T)) {
+            return 1.0;
+        }
+        
         // manual loop unroll here, use integer table counts
           
         //long equals [4] = {0L,0L,0L,0L};
           
           p  = span_start;
-          for (; p + 2 <= span_end ; p+=2) {
-              integer_counts  [s1[p]]   [s2[p]]   ++;
-              integer_counts2 [s1[p+1]] [s2[p+1]] ++;
+          if (threshold > 0.0) {
+              for (; p + 2 <= span_end ; p+=2) {
+                  integer_counts  [s1[p]]   [s2[p]]   ++;
+                  integer_counts2 [s1[p+1]] [s2[p+1]] ++;
+                  if (__builtin_expect((p - span_start) % 128 == 0, 0)) {
+                      if (check_early_exit(early_exit_check_T)) {
+                          return 1.0;
+                      }
+                  }
+              }
+          } else {
+              for (; p + 2 <= span_end ; p+=2) {
+                  integer_counts  [s1[p]]   [s2[p]]   ++;
+                  integer_counts2 [s1[p+1]] [s2[p+1]] ++;
+              }
           }
-              
+          
+          if (early_exit_check && check_early_exit(early_exit_check_T)) {
+              return 1.0;
+          }
+
           for (; p <= span_end ; p++) {
            integer_counts [(unsigned)s1[p]][(unsigned)s2[p]] ++;
          }
@@ -640,7 +676,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         for (unsigned long p = span_end + 1UL; p <= last_nongap; p++) {
           unsigned c1 = s1[p], c2 = s2[p];
  
-          if (__builtin_expect(c1 < 4UL && c2 < 4UL,1)) {
+          if (__builtin_expect((c1 | c2)<4,1)) {
             integer_counts [c1][c2] ++;
           } else { // not both resolved
             if (c1 == GAP || c2 == GAP) {
@@ -723,7 +759,11 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   if (totalNonGap <= min_overlap) {
     return -1.;
   }
-  
+    
+  if (early_exit_check && check_early_exit(totalNonGap * threshold)) {
+    return 1.0;
+  }
+
   if ((matchMode == RESOLVE || matchMode == SUBSET) && resolve_fraction < 1. && totalNonGap * resolve_fraction <= ambig_count) {
     //cout << ambig_count << "/" << totalNonGap << endl;
     return computeTN93 (s1, s2,  L, AVERAGE , randomize, min_overlap,
