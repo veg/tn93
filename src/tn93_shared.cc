@@ -445,7 +445,9 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   
   long integer_counts  [4][4] = {{0L}, {0L}, {0L}, {0L}};
   long integer_counts2 [4][4] = {{0L}, {0L}, {0L}, {0L}};
-    
+  long integer_counts3 [4][4] = {{0L}, {0L}, {0L}, {0L}};
+  long integer_counts4 [4][4] = {{0L}, {0L}, {0L}, {0L}};
+
   bool early_exit_check = threshold > 0.0;
     
   const long early_exit_check_T = early_exit_check ? (long)(threshold*L) : L;
@@ -455,9 +457,10 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
       for (int i = 0; i < 4; i++) {
           for (int j = 0; j < 4; j++) {
               if (i != j) {
-                  differences += integer_counts[i][j] + integer_counts2[i][j];
+                  differences += integer_counts[i][j] + integer_counts2[i][j] + integer_counts3[i][j] + integer_counts4[i][j];
               }
           }
+          if (differences > TL) return true;
       }
       return differences > TL;
   };
@@ -643,9 +646,11 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
           
           p  = span_start;
           if (threshold > 0.0) {
-              for (; p + 2 <= span_end ; p+=2) {
+              for (; p + 4 <= span_end ; p+=4) {
                   integer_counts  [s1[p]]   [s2[p]]   ++;
                   integer_counts2 [s1[p+1]] [s2[p+1]] ++;
+                  integer_counts3  [s1[p+2]]   [s2[p+2]]   ++;
+                  integer_counts4  [s1[p+3]] [s2[p+3]] ++;
                   if (__builtin_expect((p - span_start) % 128 == 0, 0)) {
                       if (check_early_exit(early_exit_check_T)) {
                           return 1.0;
@@ -653,9 +658,11 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
                   }
               }
           } else {
-              for (; p + 2 <= span_end ; p+=2) {
+              for (; p + 4 <= span_end ; p+=4) {
                   integer_counts  [s1[p]]   [s2[p]]   ++;
                   integer_counts2 [s1[p+1]] [s2[p+1]] ++;
+                  integer_counts3  [s1[p+2]]   [s2[p+2]]   ++;
+                  integer_counts4 [s1[p+3]] [s2[p+3]] ++;
               }
           }
           
@@ -747,7 +754,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   for (int c1 = 0; c1 < 4; c1++) {
     //printf ("\n");
     for (int c2 = 0; c2 < 4; c2++) {
-      double pc = (float_counts[c1][c2] += (double)(integer_counts[c1][c2] + integer_counts2[c1][c2]));
+      double pc = (float_counts[c1][c2] += (double)(integer_counts[c1][c2] + integer_counts2[c1][c2] + integer_counts3[c1][c2] + integer_counts4[c1][c2]));
       //printf ("%12.2g\t", pc);
       totalNonGap   += pc;
       nucFreq [c1]  += pc;
