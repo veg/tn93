@@ -68,7 +68,7 @@ int main(int argc, const char *argv[]) {
   sequence_descriptors = new sequence_gap_structure[sequenceCount];
   for (unsigned long sid = 0UL; sid < sequenceCount; sid++) {
     sequence_descriptors[sid] = describe_sequence(
-        stringText(sequences, seqLengths, sid), firstSequenceLength);
+        stringText(sequences, seqLengths, sid), firstSequenceLength, 4UL, false);
   }
 
   if (!args.quiet)

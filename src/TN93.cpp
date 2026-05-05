@@ -237,9 +237,10 @@ int main(int argc, const char *argv[]) {
              << endl;
 
       sequence_descriptors = new sequence_gap_structure[sequenceCount];
+      bool do_jumps = args.ambig != gapmm;
       for (long sid = 0; sid < sequenceCount; sid++) {
         sequence_descriptors[sid] = describe_sequence(
-            stringText(sequences, seqLengths, sid), firstSequenceLength);
+            stringText(sequences, seqLengths, sid), firstSequenceLength, 4UL, do_jumps);
       }
 
       sequenceCount = seqLengthInFile1 + seqLengthInFile2;
@@ -249,9 +250,10 @@ int main(int argc, const char *argv[]) {
     }
   } else {
     sequence_descriptors = new sequence_gap_structure[sequenceCount];
+    bool do_jumps = args.ambig != gapmm;
     for (long sid = 0; sid < sequenceCount; sid++) {
       sequence_descriptors[sid] = describe_sequence(
-          stringText(sequences, seqLengths, sid), firstSequenceLength);
+          stringText(sequences, seqLengths, sid), firstSequenceLength, 4UL, do_jumps);
     }
   }
 

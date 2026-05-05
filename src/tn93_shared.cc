@@ -118,8 +118,6 @@ const long   resolutions_AA [][20] = { {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 };
 
 #define N_CHAR 15
-#define GAP    17
-#define GAP_AA 24
 
 const  double   resolutionsCount[] = { 1.f,
   1.f,
@@ -214,6 +212,8 @@ void initAlphabets (bool doAminoAcid, char * resolutionSubset, bool id_map) {
   //---------------------------------------------------------------
 
 const char unmap_char (unsigned char c, bool do_aa) {
+  unsigned char gap_limit = do_aa ? GAP_AA : GAP;
+  if (c >= gap_limit) return '-';
   return do_aa ? ValidCharsAA[c] : ValidChars[c];
 }
 
@@ -367,8 +367,9 @@ long perfect_match (const char* source, char* target, const long sequence_length
 
   //---------------------------------------------------------------
 
-struct sequence_gap_structure describe_sequence (const char* source, const unsigned long sequence_length, const unsigned long char_count) {
+struct sequence_gap_structure describe_sequence (const char* source, const unsigned long sequence_length, const unsigned long char_count, bool do_jumps) {
   sequence_gap_structure result;
+  unsigned char gap_val = char_count == 4 ? GAP : GAP_AA;
   
   long start_run = sequence_length + 1UL,
        end_run = 0L;
@@ -377,8 +378,8 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
   result.resolved_start = start_run;
   
   for (unsigned long char_idx = 0UL; char_idx < sequence_length; char_idx++) {
-    unsigned long this_char = source[char_idx];
-    if (this_char != GAP) {
+    unsigned char this_char = (unsigned char)source[char_idx];
+    if (!IS_GAP(this_char, gap_val)) {
       if (char_idx < result.first_nongap) {
         result.first_nongap = char_idx;
       }
@@ -393,7 +394,7 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
       } else {
         end_run = char_idx;
       }
-    } else { // an ambig
+    } else { // an ambig or a gap
       if (end_run >= start_run) {
         if (end_run - start_run > result.resolved_end - result.resolved_start) {
           result.resolved_start = start_run;
@@ -411,8 +412,26 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
     }
   }
   
-  //cout << sequence_length << "/" << char_count << endl << result.first_nongap << "," 
-  //     << result.last_nongap << " : " << result.resolved_start << "," << result.resolved_end << endl;
+  if (do_jumps && (char_count == 4 || char_count == 20) && result.first_nongap < result.last_nongap) {
+      char *mutable_source = (char*)source;
+      for (unsigned long i = result.first_nongap + 1; i < result.last_nongap; ) {
+          if ((unsigned char)source[i] == gap_val) {
+              unsigned long run_start = i;
+              while (i < result.last_nongap && (unsigned char)source[i] == gap_val) i++;
+              unsigned long run_length = i - run_start;
+              if (run_length > gap_val) {
+                  if (run_length > 255) {
+                      mutable_source[run_start] = (unsigned char)255;
+                      i = run_start + 255;
+                  } else {
+                      mutable_source[run_start] = run_length;
+                  }
+              }
+          } else {
+              i++;
+          }
+      }
+  } 
   
   return result;
 }
@@ -571,14 +590,15 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
       
       
       if (span_start > span_end) {
-        for (unsigned p = first_nongap; p <= last_nongap; p++) {
-          unsigned c1 = s1[p],
-                   c2 = s2[p];
+        for (unsigned long p = first_nongap; p <= last_nongap; p++) {
+          unsigned char c1 = (unsigned char)s1[p],
+                        c2 = (unsigned char)s2[p];
           
-          if (c1 < 4 && c2 < 4) {
+          if (__builtin_expect((c1 | c2) < 4, 1)) {
             integer_counts [c1][c2] ++;
           } else { // not both resolved
-            if (c1 == GAP || c2 == GAP) {
+            if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+              p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) ;
               continue;
             }
             ambiguityHandler (c1,c2);
@@ -587,83 +607,52 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
       }
       else {
         
-        /*for (unsigned long p = first_nongap; p < span_start; p++) {
-          unsigned c1 = s1[p], c2 = s2[p];
-          
-          if (__builtin_expect(c1 < 4 && c2 < 4, 1)) {
-            integer_counts [c1][c2] ++;
-          } else { // not both resolved
-            if (c1 == GAP || c2 == GAP) {
-              continue;
-            }
-            ambiguityHandler (c1,c2);
-          }
-        }*/
         unsigned long p = first_nongap;
           
-        for (; p + 2 <= span_start; p+=2) {
-            unsigned c1 = s1[p],   c2 = s2[p];
-            unsigned c3 = s1[p+1], c4 = s2[p+1];
+        while (p < span_start) {
+            unsigned char c1 = (unsigned char)s1[p],   c2 = (unsigned char)s2[p];
             
             if (__builtin_expect((c1 | c2) < 4, 1)) {
               integer_counts [c1][c2] ++;
+              p++;
             } else { // not both resolved
-              if (c1 != GAP && c2 != GAP) {
+              if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+                p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) + 1;
+              } else {
                 ambiguityHandler (c1,c2);
+                p++;
               }
             }
-            
-            if (__builtin_expect((c3 |c4) < 4, 1)) {
-              integer_counts2 [c3][c4] ++;
-            } else { // not both resolved
-              if (c3 != GAP && c4 != GAP) {
-                ambiguityHandler (c3,c4);
-              }
-            }
-        }
-          
-        if (p < span_start) {
-            unsigned c1 = s1[p];
-            unsigned c2 = s2[p];
-
-            if (__builtin_expect((c1 | c2) < 4, 1)) {
-              integer_counts [c1][c2] ++;
-            } else { // not both resolved
-              if (c1 != GAP && c2 != GAP) {
-                  ambiguityHandler (c1,c2);
-              }
-            }
-          
         }
         
         if (early_exit_check && check_early_exit(early_exit_check_T)) {
             return 1.0;
         }
         
-        // manual loop unroll here, use integer table counts
-          
-        //long equals [4] = {0L,0L,0L,0L};
-          
-          p  = span_start;
-          if (threshold > 0.0) {
-              for (; p + 4 <= span_end ; p+=4) {
-                  integer_counts  [s1[p]]   [s2[p]]   ++;
-                  integer_counts2 [s1[p+1]] [s2[p+1]] ++;
-                  integer_counts3  [s1[p+2]]   [s2[p+2]]   ++;
-                  integer_counts4  [s1[p+3]] [s2[p+3]] ++;
-                  if (__builtin_expect((p - span_start) % 128 == 0, 0)) {
-                      if (check_early_exit(early_exit_check_T)) {
-                          return 1.0;
-                      }
-                  }
-              }
-          } else {
-              for (; p + 4 <= span_end ; p+=4) {
-                  integer_counts  [s1[p]]   [s2[p]]   ++;
-                  integer_counts2 [s1[p+1]] [s2[p+1]] ++;
-                  integer_counts3  [s1[p+2]]   [s2[p+2]]   ++;
-                  integer_counts4 [s1[p+3]] [s2[p+3]] ++;
-              }
+        if (p < span_start) p = span_start;
+
+        if (p <= span_end) {
+          if (p == span_start) {
+            if (threshold > 0.0) {
+                for (; p + 4 <= span_end ; p+=4) {
+                    integer_counts  [(unsigned char)s1[p]]   [(unsigned char)s2[p]]   ++;
+                    integer_counts2 [(unsigned char)s1[p+1]] [(unsigned char)s2[p+1]] ++;
+                    integer_counts3 [(unsigned char)s1[p+2]] [(unsigned char)s2[p+2]]   ++;
+                    integer_counts4 [(unsigned char)s1[p+3]] [(unsigned char)s2[p+3]] ++;
+                    if (__builtin_expect((p - span_start) % 128 == 0, 0)) {
+                        if (check_early_exit(early_exit_check_T)) {
+                            return 1.0;
+                        }
+                    }
+                }
+            } else {
+                for (; p + 4 <= span_end ; p+=4) {
+                    integer_counts  [(unsigned char)s1[p]]   [(unsigned char)s2[p]]   ++;
+                    integer_counts2 [(unsigned char)s1[p+1]] [(unsigned char)s2[p+1]] ++;
+                    integer_counts3 [(unsigned char)s1[p+2]] [(unsigned char)s2[p+2]]   ++;
+                    integer_counts4 [(unsigned char)s1[p+3]] [(unsigned char)s2[p+3]] ++;
+                }
+            }
           }
           
           if (early_exit_check && check_early_exit(early_exit_check_T)) {
@@ -671,22 +660,20 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
           }
 
           for (; p <= span_end ; p++) {
-           integer_counts [(unsigned)s1[p]][(unsigned)s2[p]] ++;
-         }
-
-        /*for (unsigned long p = span_start; p <= span_end ; p++) {
-            unsigned  idx1 = ((unsigned)s1[p]);
-            unsigned  idx2 = ((unsigned)s2[p]);
-            integer_counts [idx1][idx2] ++;
-        }*/
+           integer_counts [(unsigned char)s1[p]][(unsigned char)s2[p]] ++;
+          }
+        }
           
-        for (unsigned long p = span_end + 1UL; p <= last_nongap; p++) {
-          unsigned c1 = s1[p], c2 = s2[p];
+        if (p < span_end + 1UL) p = span_end + 1UL;
+
+        for (; p <= last_nongap; p++) {
+          unsigned char c1 = (unsigned char)s1[p], c2 = (unsigned char)s2[p];
  
           if (__builtin_expect((c1 | c2)<4,1)) {
             integer_counts [c1][c2] ++;
           } else { // not both resolved
-            if (c1 == GAP || c2 == GAP) {
+            if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+              p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP));
               continue;
             }
             ambiguityHandler (c1,c2);
@@ -694,25 +681,28 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         }
       }
     } else {
-        for (unsigned p = 0; p < L; p++) {
-          unsigned c1 = s1[p], c2 = s2[p];
+        for (unsigned long p = 0; p < L; p++) {
+          unsigned char c1 = (unsigned char)s1[p], c2 = (unsigned char)s2[p];
           
-          if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
+          if (__builtin_expect((c1 | c2) < 4,1)) {
             integer_counts [c1][c2] ++;
           } else { // not both resolved
-            if (c1 == GAP || c2 == GAP) {
+            if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
               if (matchMode != GAPMM) {
-                continue;
+                p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP));
               } else {
-                if (c1 == GAP && c2 == GAP)
-                  continue;
-                else {
-                  if (c1 == GAP) {
-                    c1 = N_CHAR;
+                if (IS_GAP(c1, GAP) && IS_GAP(c2, GAP)) {
+                    // skip
+                } else {
+                  unsigned char tc1 = c1, tc2 = c2;
+                  if (IS_GAP(c1, GAP)) {
+                    tc1 = N_CHAR;
                   } else {
-                    c2 = N_CHAR;
+                    tc2 = N_CHAR;
                   }
+                  ambiguityHandler (tc1,tc2);
                 }
+                continue;
               }
             }
             
@@ -721,32 +711,34 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         }
     }
   } else {
-        for (unsigned p = 0; p < L; p++) {
-          long pi = randomize[p];
-          unsigned c1 = s1[pi], c2 = s2[pi];
-          
-          if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
-            integer_counts [c1][c2] ++;
-          } else { // not both resolved
-            if (c1 == GAP || c2 == GAP) {
-              if (matchMode != GAPMM) {
-                continue;
+    for (unsigned long p = 0; p < L; p++) {
+      long pi = randomize[p];
+      unsigned char c1 = (unsigned char)s1[pi], c2 = (unsigned char)s2[pi];
+      
+      if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
+        integer_counts [c1][c2] ++;
+      } else { // not both resolved
+        if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+          if (matchMode != GAPMM) {
+            continue;
+          } else {
+            if (IS_GAP(c1, GAP) && IS_GAP(c2, GAP))
+              continue;
+            else {
+              unsigned char tc1 = c1, tc2 = c2;
+              if (IS_GAP(c1, GAP)) {
+                tc1 = N_CHAR;
               } else {
-                if (c1 == GAP && c2 == GAP)
-                  continue;
-                else {
-                  if (c1 == GAP) {
-                    c1 = N_CHAR;
-                  } else {
-                    c2 = N_CHAR;
-                  }
-                }
+                tc2 = N_CHAR;
               }
+              ambiguityHandler (tc1,tc2);
             }
-            
-            ambiguityHandler (c1,c2);
           }
+        } else {
+          ambiguityHandler (c1,c2);
         }
+      }
+    }
   }
   
   
@@ -774,7 +766,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   if ((matchMode == RESOLVE || matchMode == SUBSET) && resolve_fraction < 1. && totalNonGap * resolve_fraction <= ambig_count) {
     //cout << ambig_count << "/" << totalNonGap << endl;
     return computeTN93 (s1, s2,  L, AVERAGE , randomize, min_overlap,
-                       histogram, slice, hist_size, count1, count2);
+                       histogram, slice, hist_size, count1, count2, sequence_descriptor1, sequence_descriptor2, threshold);
   }
   
   totalNonGap = 2./(nucFreq[0] + nucFreq[1] + nucFreq[2] + nucFreq[3]);
@@ -1117,20 +1109,22 @@ int readFASTA (FILE* F, char& automatonState,  StringBuffer &names,
   //---------------------------------------------------------------
 
 void dump_fasta (const char* mapped_characters, const long firstSequenceLength, FILE *output, bool newln, bool is_prot, unsigned long from, unsigned long to) {
+  unsigned char gap_limit = is_prot ? GAP_AA : GAP;
   if (from > 0 || to > 0) {
     for (long c = from; c <= to; c++) {
-      fputc( is_prot ? ValidCharsAA[(unsigned char)mapped_characters[c]] : ValidChars[(unsigned char)mapped_characters[c]], output);
+      unsigned char code = (unsigned char)mapped_characters[c];
+      fputc( is_prot ? (code >= gap_limit ? '-' : ValidCharsAA[code]) : (code >= gap_limit ? '-' : ValidChars[code]), output);
     }
   } else {
     for (long c = 0; c < firstSequenceLength; c++) {
-      fputc( is_prot ? ValidCharsAA[(unsigned char)mapped_characters[c]] : ValidChars[(unsigned char)mapped_characters[c]], output);
+      unsigned char code = (unsigned char)mapped_characters[c];
+      fputc( is_prot ? (code >= gap_limit ? '-' : ValidCharsAA[code]) : (code >= gap_limit ? '-' : ValidChars[code]), output);
     }
   }
   if (newln) {
-    fprintf (output, "\n"); 
+    fprintf (output, "\n");
   }
 }
-
   //---------------------------------------------------------------
 
 void dump_sequence_fasta (unsigned long index, FILE* output, long firstSequenceLength, double * d, bool is_prot, unsigned long from, unsigned long to) {

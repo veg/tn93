@@ -27,6 +27,12 @@ using namespace std;
 #define  MISMATCH       5
 #define  INFORMATIVE    6
 
+#define  GAP            17
+#define  GAP_AA         24
+
+#define  IS_GAP(c, gap_val) ((c) >= (gap_val))
+#define  GET_JUMP(c, gap_val) ((c >= gap_val) ? (c == gap_val ? 0 : c-1) : 0)
+
 #define RAND_RANGE 0xffffffffUL /* Maximum value returned by genrand_int32 */
 
 #define MIN(a,b) (a) < (b) ? (a) : (b)
@@ -71,7 +77,7 @@ void merge_two_sequences (const char* source, char* target, const long sequence_
 long perfect_match (const char* source, char* target, const long sequence_length);
 void dump_fasta (const char* source, const long sequence_length, FILE* output, bool newln = true, bool = false, unsigned long from = 0L, unsigned long to = 0L);
 
-struct sequence_gap_structure describe_sequence (const char* source, const unsigned long sequence_length, const unsigned long char_count = 4UL);
+struct sequence_gap_structure describe_sequence (const char* source, const unsigned long sequence_length, const unsigned long char_count = 4UL, bool do_jumps = false);
 
 const long * resolve_char (unsigned char, bool = false, bool = true);
 const double resolution_count (unsigned char, bool = false);
