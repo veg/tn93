@@ -432,13 +432,13 @@ int main(int argc, const char *argv[]) {
                               HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count,
                               1L, &sequence_descriptors[mapped_id],
                               &sequence_descriptors[mapped_id2],
-                              args.hamming_skip ? args.distance : -1.0)
+                              args.hamming_skip ? args.distance : -1.0, mapped_id, mapped_id2)
                 : computeTN93(s1, stringText(sequences, seqLengths, mapped_id2),
                               firstSequenceLength, resolutionOption, randFlag,
                               args.overlap, &(histogram_counts[which_bin][0]),
                               HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count,
                               1L, NULL, NULL,
-                              args.hamming_skip ? args.distance : -1.0);
+                              args.hamming_skip ? args.distance : -1.0, mapped_id, mapped_id2);
 
        
         if (thisD >= args.min_distance && thisD <= args.distance) {

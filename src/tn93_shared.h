@@ -56,7 +56,7 @@ struct sequence_gap_structure {
 
 void init_genrand(unsigned long s);
 unsigned long genrand_int32(void);
-double		computeTN93 (const char * s1, const char *s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap, unsigned long* = NULL, const double = 0.0, const unsigned long cnt = 0, const long count1 = 1, const long count2 = 1, const sequence_gap_structure * = NULL, const sequence_gap_structure * = NULL, const double threshold = -1.0);
+double		computeTN93 (const char * s1, const char *s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap, unsigned long* = NULL, const double = 0.0, const unsigned long cnt = 0, const long count1 = 1, const long count2 = 1, const sequence_gap_structure * = NULL, const sequence_gap_structure * = NULL, const double threshold = -1.0, long id1 = -1, long id2 = -1);
 
 long   computeDifferences (const char * s1,
                            const char *s2,
@@ -98,7 +98,8 @@ extern double   resolve_fraction;
 extern Vector       nameLengths,
        seqLengths,
        workingNodes,
-       nodeParents;
+       nodeParents,
+       nucCounts;
 
 extern VectorDouble distanceEstimates;
 extern const  double  resolutionsCount [];

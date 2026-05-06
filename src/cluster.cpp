@@ -262,7 +262,7 @@ int main(int argc, const char *argv[]) {
               base_sequence, test_sequence, firstSequenceLength,
               resolutionOption, NULL, args.overlap, NULL, HISTOGRAM_SLICE,
               HISTOGRAM_BINS, 1L, 1L, &sequence_descriptors[seq1],
-              &sequence_descriptors[seq2], -1.0);
+              &sequence_descriptors[seq2], -1.0, seq1, seq2);
 
           if (distance <= args.distance) {
             // check if this can be merged into the current cluster
@@ -274,7 +274,7 @@ int main(int argc, const char *argv[]) {
                   test_sequence, stringText(sequences, seqLengths, csi),
                   firstSequenceLength, resolutionOption, NULL, args.overlap,
                   NULL, HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L,
-                  &sequence_descriptors[seq2], &sequence_descriptors[csi], -1.0);
+                  &sequence_descriptors[seq2], &sequence_descriptors[csi], -1.0, seq2, csi);
                 if (d > args.distance || d < 0.) {
                     throw(current_cluster_seq);
                 }
@@ -366,7 +366,7 @@ int main(int argc, const char *argv[]) {
                 base_sequence, stringText(sequences, seqLengths, csi),
                 firstSequenceLength, resolutionOption, NULL, args.overlap, NULL,
                 HISTOGRAM_SLICE, HISTOGRAM_BINS, 1L, 1L,
-                &sequence_descriptors[seq1], &sequence_descriptors[csi], -1.0);
+                &sequence_descriptors[seq1], &sequence_descriptors[csi], -1.0, seq1, csi);
             if (d >= 0. && d <= args.distance) {
               throw(0);
             }

@@ -22,10 +22,10 @@ StringBuffer names,
 sequences;
 
 Vector       nameLengths,
-seqLengths,
-workingNodes,
-nodeParents;
-
+       seqLengths,
+       workingNodes,
+       nodeParents,
+       nucCounts;
 VectorDouble distanceEstimates;
 
 const  char ValidChars[]       = "ACGTURYSWKMBDHVN?-",
@@ -440,7 +440,7 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
 /*---------------------------------------------------------------------------------------------------- */
 
 double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap,
-                       unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2, const sequence_gap_structure * sequence_descriptor1, const sequence_gap_structure * sequence_descriptor2, const double threshold) {
+                       unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2, const sequence_gap_structure * sequence_descriptor1, const sequence_gap_structure * sequence_descriptor2, const double threshold, long id1, long id2) {
   
   bool useK2P   = false;
   unsigned long ambig_count = 0UL;
@@ -462,24 +462,20 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   nucF[4],
   float_counts [4][4] = {{0.},{0.},{0.},{0.}};
   
-  long integer_counts  [4][4] = {{0L}, {0L}, {0L}, {0L}};
-  long integer_counts2 [4][4] = {{0L}, {0L}, {0L}, {0L}};
+  long ic1[16] = {0L}, ic2[16] = {0L}, ic3[16] = {0L}, ic4[16] = {0L};
 
   bool early_exit_check = threshold > 0.0;
     
   const long early_exit_check_T = early_exit_check ? (long)(threshold*L) : L;
     
   auto check_early_exit = [&] (long TL) -> bool {
-      long differences = 0L;
-      for (int i = 0; i < 4; i++) {
-          for (int j = 0; j < 4; j++) {
-              if (i != j) {
-                  differences += integer_counts[i][j] + integer_counts2[i][j];
-              }
-          }
-          if (differences > TL) return true;
-      }
-      return differences > TL;
+      long matches = ic1[0] + ic1[5] + ic1[10] + ic1[15] +
+                     ic2[0] + ic2[5] + ic2[10] + ic2[15] +
+                     ic3[0] + ic3[5] + ic3[10] + ic3[15] +
+                     ic4[0] + ic4[5] + ic4[10] + ic4[15];
+      long total = 0;
+      for (int i=0; i<16; i++) total += ic1[i] + ic2[i] + ic3[i] + ic4[i];
+      return (total - matches) > TL;
   };
 
   auto ambiguityHandler = [&] (unsigned c1, unsigned c2) -> void {
@@ -489,7 +485,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
               if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c2])) {
                   if (resolutions[c2][c1]) {
                       ambig_count ++;
-                      integer_counts[c1][c1] ++;
+                      ic1[(c1 << 2) | c1]++;
                       return;
                   }
               }
@@ -512,8 +508,8 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
               if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c1])) {
                 if (resolutions[c1][c2]) {
                   ambig_count ++;
-                  integer_counts[c2][c2] ++;
-                    return;
+                  ic1[(c2 << 2) | c2]++;
+                  return;
                 }
               }
               
@@ -591,9 +587,9 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         for (unsigned long p = first_nongap; p <= last_nongap; p++) {
           unsigned char c1 = (unsigned char)s1[p],
                         c2 = (unsigned char)s2[p];
-          
+
           if (__builtin_expect((c1 | c2) < 4, 1)) {
-            integer_counts [c1][c2] ++;
+            ic1[(c1 << 2) | c2] ++;
           } else { // not both resolved
             if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
               p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) ;
@@ -603,15 +599,16 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
           }
         }
       }
+
       else {
-        
+
         unsigned long p = first_nongap;
-          
+
         while (p < span_start) {
             unsigned char c1 = (unsigned char)s1[p],   c2 = (unsigned char)s2[p];
-            
+
             if (__builtin_expect((c1 | c2) < 4, 1)) {
-              integer_counts [c1][c2] ++;
+              ic1[(c1 << 2) | c2] ++;
               p++;
             } else { // not both resolved
               if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
@@ -622,47 +619,51 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
               }
             }
         }
-        
+
         if (early_exit_check && check_early_exit(early_exit_check_T)) {
             return 1.0;
         }
-        
+
         if (p < span_start) p = span_start;
 
         if (p <= span_end) {
             if (threshold > 0.0) {
                 while (p + 128 <= span_end) {
-                    for (unsigned long block_end = p + 128; p < block_end; p += 2) {
-                        integer_counts  [(unsigned char)s1[p]]   [(unsigned char)s2[p]]   ++;
-                        integer_counts2 [(unsigned char)s1[p+1]] [(unsigned char)s2[p+1]] ++;
+                    for (unsigned long block_end = p + 128; p < block_end; p += 4) {
+                        ic1 [((unsigned char)s1[p]   << 2) | (unsigned char)s2[p]]   ++;
+                        ic2 [((unsigned char)s1[p+1] << 2) | (unsigned char)s2[p+1]] ++;
+                        ic3 [((unsigned char)s1[p+2] << 2) | (unsigned char)s2[p+2]] ++;
+                        ic4 [((unsigned char)s1[p+3] << 2) | (unsigned char)s2[p+3]] ++;
                     }
                     if (check_early_exit(early_exit_check_T)) {
                         return 1.0;
                     }
                 }
             }
-            
-            for (; p + 2 <= span_end ; p+=2) {
-                integer_counts  [(unsigned char)s1[p]]   [(unsigned char)s2[p]]   ++;
-                integer_counts2 [(unsigned char)s1[p+1]] [(unsigned char)s2[p+1]] ++;
+
+            for (; p + 4 <= span_end ; p+=4) {
+                ic1 [((unsigned char)s1[p]   << 2) | (unsigned char)s2[p]]   ++;
+                ic2 [((unsigned char)s1[p+1] << 2) | (unsigned char)s2[p+1]] ++;
+                ic3 [((unsigned char)s1[p+2] << 2) | (unsigned char)s2[p+2]] ++;
+                ic4 [((unsigned char)s1[p+3] << 2) | (unsigned char)s2[p+3]] ++;
             }
-          
+
             if (early_exit_check && check_early_exit(early_exit_check_T)) {
                 return 1.0;
             }
 
             for (; p <= span_end ; p++) {
-                integer_counts [(unsigned char)s1[p]][(unsigned char)s2[p]] ++;
+                ic1 [((unsigned char)s1[p] << 2) | (unsigned char)s2[p]] ++;
             }
         }
-          
+
         if (p < span_end + 1UL) p = span_end + 1UL;
 
         for (; p <= last_nongap; p++) {
           unsigned char c1 = (unsigned char)s1[p], c2 = (unsigned char)s2[p];
- 
+
           if (__builtin_expect((c1 | c2)<4,1)) {
-            integer_counts [c1][c2] ++;
+            ic1 [(c1 << 2) | c2] ++;
           } else { // not both resolved
             if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
               p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP));
@@ -672,12 +673,12 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
           }
         }
       }
-    } else {
+      } else {
         for (unsigned long p = 0; p < L; p++) {
           unsigned char c1 = (unsigned char)s1[p], c2 = (unsigned char)s2[p];
-          
+
           if (__builtin_expect((c1 | c2) < 4,1)) {
-            integer_counts [c1][c2] ++;
+            ic1 [(c1 << 2) | c2] ++;
           } else { // not both resolved
             if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
               if (matchMode != GAPMM) {
@@ -697,18 +698,18 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
                 continue;
               }
             }
-            
+
             ambiguityHandler (c1,c2);
           }
         }
-    }
-  } else {
-    for (unsigned long p = 0; p < L; p++) {
+      }
+      } else {
+      for (unsigned long p = 0; p < L; p++) {
       long pi = randomize[p];
       unsigned char c1 = (unsigned char)s1[pi], c2 = (unsigned char)s2[pi];
-      
+
       if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
-        integer_counts [c1][c2] ++;
+        ic1 [(c1 << 2) | c2] ++;
       } else { // not both resolved
         if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
           if (matchMode != GAPMM) {
@@ -730,21 +731,23 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
           ambiguityHandler (c1,c2);
         }
       }
-    }
-  }
-  
-  
-  //printf ("\n");
-  for (int c1 = 0; c1 < 4; c1++) {
-    //printf ("\n");
-    for (int c2 = 0; c2 < 4; c2++) {
-      double pc = (float_counts[c1][c2] += (double)(integer_counts[c1][c2] + integer_counts2[c1][c2]));
+      }
+      }
+
+
+      //printf ("\n");
+      for (int c1 = 0; c1 < 4; c1++) {
+      //printf ("\n");
+      for (int c2 = 0; c2 < 4; c2++) {
+      int idx = (c1 << 2) | c2;
+      double pc = (float_counts[c1][c2] += (double)(ic1[idx] + ic2[idx] + ic3[idx] + ic4[idx]));
       //printf ("%12.2g\t", pc);
       totalNonGap   += pc;
       nucFreq [c1]  += pc;
       nucFreq [c2]  += pc;
-    }
-  }
+      }
+      }
+
   //printf ("\ntotalNonGap = %g\n", totalNonGap);
 
   if (totalNonGap <= min_overlap) {
@@ -873,6 +876,21 @@ void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firs
 {
   sequences.appendChar ('\0');
   seqLengths.appendValue (sequences.length());
+
+  long current_seq_start = 0;
+  if (seqLengths.length() > 2) {
+      current_seq_start = seqLengths.value(seqLengths.length()-3);
+  }
+  const char* current_seq = sequences.getString() + current_seq_start;
+  long current_seq_len = sequences.length() - 1 - current_seq_start;
+
+  long counts[4] = {0,0,0,0};
+  for (long i = 0; i < current_seq_len; i++) {
+      unsigned char c = (unsigned char)current_seq[i];
+      if (c < 4) counts[c]++;
+  }
+  for (int i=0; i<4; i++) nucCounts.appendValue(counts[i]);
+
   if (seqLengths.length() == 2)
       {
     firstSequenceLength = stringLength (seqLengths, 0);
