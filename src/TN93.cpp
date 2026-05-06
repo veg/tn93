@@ -567,8 +567,12 @@ int main(int argc, const char *argv[]) {
     outStream = &cerr;
   }
 
-  (*outStream) << "{" << endl
-               << '\t' << "\"Actual comparisons performed\" :"
+  (*outStream) << "{" << endl;
+  if (args.hamming_skip) {
+      (*outStream) << "\t\"Note\" : \"Distance histogram and maximum distance might be inaccurate when using the -H (Hamming skip) option.\"," << endl;
+  }
+  (*outStream) << '\t' << "\"Actual comparisons performed\" :"
+
                << pairwise - skipped_comparisons << ',' << endl;
   (*outStream) << "\t\"Comparisons accounting for copy numbers \" :"
                << (weighted_counts[0] + weighted_counts[1] + weighted_counts[2])
