@@ -600,79 +600,93 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         }
       }
 
-      else {
+      #define UPDATE_IC(c1, c2) { \
+          ic1[((unsigned char)(c1) << 2) | (unsigned char)(c2)]++; \
+      }
 
-        unsigned long p = first_nongap;
+            else {
 
-        while (p < span_start) {
-            unsigned char c1 = (unsigned char)s1[p],   c2 = (unsigned char)s2[p];
+              unsigned long p = first_nongap;
+              long total_s1_overlap[4] = {0,0,0,0}, consumed_s1[4] = {0,0,0,0};
 
-            if (__builtin_expect((c1 | c2) < 4, 1)) {
-              ic1[(c1 << 2) | c2] ++;
-              p++;
-            } else { // not both resolved
-              if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
-                p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) + 1;
+              if (id1 >= 0) {
+                  for (int i=0; i<4; i++) total_s1_overlap[i] = nucCounts.value(id1 * 4 + i);
+                  // Subtract bases in overhangs
+                  for (unsigned long pi = 0; pi < first_nongap; pi++) {
+                      unsigned char c = (unsigned char)s1[pi];
+                      if (c < 4) total_s1_overlap[c]--;
+                  }
+                  for (unsigned long pi = last_nongap + 1; pi < L; pi++) {
+                      unsigned char c = (unsigned char)s1[pi];
+                      if (c < 4) total_s1_overlap[c]--;
+                  }
               } else {
-                ambiguityHandler (c1,c2);
-                p++;
+                   for (unsigned long pi = first_nongap; pi <= last_nongap; pi++) {
+                      unsigned char c = (unsigned char)s1[pi];
+                      if (c < 4) {
+                          total_s1_overlap[c]++;
+                      } else if (IS_GAP(c, GAP)) {
+                          pi += GET_JUMP(c, GAP);
+                      }
+                  }
+              }
+
+              // Fast Hunter Pass
+              static thread_local unsigned long deferred_indices[4096];
+              unsigned long deferred_count = 0;
+
+              for (unsigned long hunter_p = first_nongap; hunter_p <= last_nongap; ) {
+                  unsigned char c1 = (unsigned char)s1[hunter_p], c2 = (unsigned char)s2[hunter_p];
+                  if (__builtin_expect(c1 == c2 && c1 < 4, 1)) {
+                      hunter_p++;
+                      continue;
+                  }
+                  // Something interesting
+                  if (deferred_count < 4096) {
+                      deferred_indices[deferred_count++] = hunter_p;
+                  } else {
+                      // Buffer full, unlikely for most genomic data but handle it
+                      if (c1 < 4) consumed_s1[c1]++;
+                      if (__builtin_expect((c1 | c2) < 4, 1)) {
+                          UPDATE_IC(c1, c2);
+                          hunter_p++;
+                      } else {
+                          if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+                              hunter_p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) + 1;
+                          } else {
+                              ambiguityHandler (c1,c2);
+                              hunter_p++;
+                          }
+                      }
+                      continue;
+                  }
+
+                  if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+                      hunter_p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) + 1;
+                  } else {
+                      hunter_p++;
+                  }
+              }
+
+              // Processor Pass
+              for (unsigned long i = 0; i < deferred_count; i++) {
+                  unsigned long curr_p = deferred_indices[i];
+                  unsigned char c1 = (unsigned char)s1[curr_p], c2 = (unsigned char)s2[curr_p];
+
+                  if (c1 < 4) consumed_s1[c1]++;
+
+                  if (__builtin_expect((c1 | c2) < 4, 1)) {
+                      UPDATE_IC(c1, c2);
+                  } else {
+                      ambiguityHandler(c1, c2);
+                  }
+              }
+
+              for (int i = 0; i < 4; i++) {
+                  ic1[(i << 2) | i] += (total_s1_overlap[i] - consumed_s1[i]);
               }
             }
-        }
 
-        if (early_exit_check && check_early_exit(early_exit_check_T)) {
-            return 1.0;
-        }
-
-        if (p < span_start) p = span_start;
-
-        if (p <= span_end) {
-            if (threshold > 0.0) {
-                while (p + 128 <= span_end) {
-                    for (unsigned long block_end = p + 128; p < block_end; p += 4) {
-                        ic1 [((unsigned char)s1[p]   << 2) | (unsigned char)s2[p]]   ++;
-                        ic2 [((unsigned char)s1[p+1] << 2) | (unsigned char)s2[p+1]] ++;
-                        ic3 [((unsigned char)s1[p+2] << 2) | (unsigned char)s2[p+2]] ++;
-                        ic4 [((unsigned char)s1[p+3] << 2) | (unsigned char)s2[p+3]] ++;
-                    }
-                    if (check_early_exit(early_exit_check_T)) {
-                        return 1.0;
-                    }
-                }
-            }
-
-            for (; p + 4 <= span_end ; p+=4) {
-                ic1 [((unsigned char)s1[p]   << 2) | (unsigned char)s2[p]]   ++;
-                ic2 [((unsigned char)s1[p+1] << 2) | (unsigned char)s2[p+1]] ++;
-                ic3 [((unsigned char)s1[p+2] << 2) | (unsigned char)s2[p+2]] ++;
-                ic4 [((unsigned char)s1[p+3] << 2) | (unsigned char)s2[p+3]] ++;
-            }
-
-            if (early_exit_check && check_early_exit(early_exit_check_T)) {
-                return 1.0;
-            }
-
-            for (; p <= span_end ; p++) {
-                ic1 [((unsigned char)s1[p] << 2) | (unsigned char)s2[p]] ++;
-            }
-        }
-
-        if (p < span_end + 1UL) p = span_end + 1UL;
-
-        for (; p <= last_nongap; p++) {
-          unsigned char c1 = (unsigned char)s1[p], c2 = (unsigned char)s2[p];
-
-          if (__builtin_expect((c1 | c2)<4,1)) {
-            ic1 [(c1 << 2) | c2] ++;
-          } else { // not both resolved
-            if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
-              p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP));
-              continue;
-            }
-            ambiguityHandler (c1,c2);
-          }
-        }
-      }
       } else {
         for (unsigned long p = 0; p < L; p++) {
           unsigned char c1 = (unsigned char)s1[p], c2 = (unsigned char)s2[p];
