@@ -411,7 +411,7 @@ main (int argc, const char *argv[])
 
     StringBuffer local_buffer;
 
-#pragma omp for schedule(static, 1)
+#pragma omp for schedule(dynamic, 1)
     for (long seq1 = 0; seq1 < upperBound; seq1++)
       {
 
