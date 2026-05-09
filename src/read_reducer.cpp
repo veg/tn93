@@ -71,6 +71,7 @@ merge_current_clusters (StringBuffer &current_clusters,
       cluster_merge.appendValue (-1);
     }
 
+<<<<<<< HEAD
   bool did_some_merges = false;
   long merged_cluster_count = 0;
   do
@@ -148,6 +149,20 @@ merge_current_clusters (StringBuffer &current_clusters,
                   compressed_members.value (k)
                       + compressed_members.value (merge_with),
                   merge_with);
+=======
+    unsigned long currently_defined_clusters = sequence_lengths.length()-1;
+    long try_cluster = -1;
+    
+        #pragma omp parallel for default(none) shared(currently_defined_clusters, try_cluster, sequence_lengths, current_sequence, current_clusters, firstSequenceLength, min_overlap)
+        for (long cluster_index = 0; cluster_index < currently_defined_clusters; cluster_index ++) {
+            #pragma omp flush (try_cluster)
+            if (try_cluster < 0) {
+                if (perfect_match (current_sequence.getString(), stringText(current_clusters, sequence_lengths, cluster_index), firstSequenceLength) >= min_overlap) {
+                    #pragma omp critical
+                    try_cluster = cluster_index;
+                    #pragma omp flush (try_cluster)
+                }
+>>>>>>> c9a319bbd547413d822531a06bf7bd2262242fb0
             }
         }
       compressed_clusters.swap (current_clusters);
