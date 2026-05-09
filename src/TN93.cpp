@@ -349,7 +349,7 @@ int main(int argc, const char *argv[]) {
     
     StringBuffer local_buffer;
 
-#pragma omp for schedule(guided)
+#pragma omp for schedule(static, 1)
     for (long seq1 = 0; seq1 < upperBound; seq1++) {
       
       long mapped_id = randomized_fst ? randomized_idx.value(seq1)
@@ -432,13 +432,13 @@ int main(int argc, const char *argv[]) {
                               HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count,
                               1L, &sequence_descriptors[mapped_id],
                               &sequence_descriptors[mapped_id2],
-                              args.hamming_skip ? args.distance : -1.0, mapped_id, mapped_id2)
+                              args.hamming_skip ? args.distance : -1.0)
                 : computeTN93(s1, stringText(sequences, seqLengths, mapped_id2),
                               firstSequenceLength, resolutionOption, randFlag,
                               args.overlap, &(histogram_counts[which_bin][0]),
                               HISTOGRAM_SLICE, HISTOGRAM_BINS, weighted_count,
                               1L, NULL, NULL,
-                              args.hamming_skip ? args.distance : -1.0, mapped_id, mapped_id2);
+                              args.hamming_skip ? args.distance : -1.0);
 
        
         if (thisD >= args.min_distance && thisD <= args.distance) {
@@ -465,7 +465,7 @@ int main(int argc, const char *argv[]) {
                   
 
               } else {
-                #pragma omp critical
+                #pragma omp critical(dist_matrix)
                 {
                   distanceMatrix[mapped_id * sequenceCount + mapped_id2] = thisD;
                   distanceMatrix[mapped_id2 * sequenceCount + mapped_id] = thisD;
@@ -473,7 +473,7 @@ int main(int argc, const char *argv[]) {
               }
             }
             if (local_buffer.length() > BUFFER_FLUSH_LENGTH) {
-                #pragma omp critical
+                #pragma omp critical(fwrite)
                 {
                     fwrite (local_buffer.getString(), sizeof (char), local_buffer.length(), args.output);
                 }
@@ -492,13 +492,19 @@ int main(int argc, const char *argv[]) {
           }
         }
       }
-#pragma omp critical
-      {
-        pairIndex += (args.input2 == NULL || do_fst)
+      
+      long current_pair_index;
+      #pragma omp atomic capture
+      current_pair_index = pairIndex += (args.input2 == NULL || do_fst)
                          ? (sequenceCount - seq1 - 1)
                          : seqLengthInFile2;
-        foundLinks += local_links_found;
-        skipped_comparisons += compsSkipped;
+      #pragma omp atomic
+      foundLinks += local_links_found;
+      #pragma omp atomic
+      skipped_comparisons += compsSkipped;
+
+      #pragma omp critical(stats)
+      {
         for (int idx = 0; idx < 3; idx++) {
           if (local_max[idx] > max[idx]) {
             max[idx] = local_max[idx];
@@ -508,33 +514,35 @@ int main(int argc, const char *argv[]) {
         }
       }
 
-      if (!args.quiet && (pairIndex * 100. / pairwise - percentDone > 0.1 ||
+      if (!args.quiet && (current_pair_index * 100. / pairwise - percentDone > 0.1 ||
                           seq1 == (long)sequenceCount - 1)) {
-#pragma omp critical
+#pragma omp critical(progress)
         {
-          time(&after);
-          percentDone = pairIndex * 100. / pairwise;
-          cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
-                  "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
-                  "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress"
-                  ":"
-               << setw(8) << percentDone << "% (" << setw(8) << foundLinks
-               << " links found, " << setw(12) << std::setprecision(3)
-               << pairIndex / difftime(after, before) << " evals/sec)";
-
-          after = before;
+          if (current_pair_index * 100. / pairwise - percentDone > 0.1 || seq1 == (long)sequenceCount - 1) {
+              time(&after);
+              percentDone = current_pair_index * 100. / pairwise;
+              cerr << "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                      "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b"
+                      "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\bProgress"
+                      ":"
+                   << setw(8) << percentDone << "% (" << setw(8) << foundLinks
+                   << " links found, " << setw(12) << std::setprecision(3)
+                   << current_pair_index / difftime(after, before) << " evals/sec)";
+    
+              after = before;
+          }
         }
       }
     }
     
     if (local_buffer.length() > 0) {
-        #pragma omp critical
+        #pragma omp critical(fwrite)
         {
             fwrite (local_buffer.getString(), sizeof (char), local_buffer.length(), args.output);
         }
     }
 
-#pragma omp critical
+#pragma omp critical(hist)
     {
       for (unsigned long r = 0; r < 3; r++) {
         for (unsigned long k = 0; k < HISTOGRAM_BINS; k++) {

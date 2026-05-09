@@ -22,10 +22,10 @@ StringBuffer names,
 sequences;
 
 Vector       nameLengths,
-       seqLengths,
-       workingNodes,
-       nodeParents,
-       nucCounts;
+seqLengths,
+workingNodes,
+nodeParents;
+
 VectorDouble distanceEstimates;
 
 const  char ValidChars[]       = "ACGTURYSWKMBDHVN?-",
@@ -379,14 +379,18 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
   
   for (unsigned long char_idx = 0UL; char_idx < sequence_length; char_idx++) {
     unsigned char this_char = (unsigned char)source[char_idx];
-    if (!IS_GAP(this_char, gap_val)) {
+    if (IS_GAP(this_char, gap_val)) {
+        result.total_gaps++;
+    } else {
       if (char_idx < result.first_nongap) {
         result.first_nongap = char_idx;
       }
       if (char_idx > result.last_nongap) {
         result.last_nongap = char_idx;
       }
-      
+      if (this_char >= char_count) {
+          result.total_ambigs++;
+      }
     }
     if (this_char < char_count) { // not an ambig
       if (char_idx < start_run) {
@@ -440,7 +444,7 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
 /*---------------------------------------------------------------------------------------------------- */
 
 double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,  const unsigned long L, const char matchMode, const long * randomize, const long min_overlap,
-                       unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2, const sequence_gap_structure * sequence_descriptor1, const sequence_gap_structure * sequence_descriptor2, const double threshold, long id1, long id2) {
+                       unsigned long* histogram, const double slice, const unsigned long hist_size, const long count1, const long count2, const sequence_gap_structure * sequence_descriptor1, const sequence_gap_structure * sequence_descriptor2, const double threshold) {
   
   bool useK2P   = false;
   unsigned long ambig_count = 0UL;
@@ -462,20 +466,26 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   nucF[4],
   float_counts [4][4] = {{0.},{0.},{0.},{0.}};
   
-  long ic1[16] = {0L}, ic2[16] = {0L}, ic3[16] = {0L}, ic4[16] = {0L};
+  long integer_counts  [4][4] = {{0L}, {0L}, {0L}, {0L}};
+  long integer_counts2 [4][4] = {{0L}, {0L}, {0L}, {0L}};
+  long integer_counts3 [4][4] = {{0L}, {0L}, {0L}, {0L}};
+  long integer_counts4 [4][4] = {{0L}, {0L}, {0L}, {0L}};
 
   bool early_exit_check = threshold > 0.0;
     
   const long early_exit_check_T = early_exit_check ? (long)(threshold*L) : L;
     
   auto check_early_exit = [&] (long TL) -> bool {
-      long matches = ic1[0] + ic1[5] + ic1[10] + ic1[15] +
-                     ic2[0] + ic2[5] + ic2[10] + ic2[15] +
-                     ic3[0] + ic3[5] + ic3[10] + ic3[15] +
-                     ic4[0] + ic4[5] + ic4[10] + ic4[15];
-      long total = 0;
-      for (int i=0; i<16; i++) total += ic1[i] + ic2[i] + ic3[i] + ic4[i];
-      return (total - matches) > TL;
+      long differences = 0L;
+      for (int i = 0; i < 4; i++) {
+          for (int j = 0; j < 4; j++) {
+              if (i != j) {
+                  differences += integer_counts[i][j] + integer_counts2[i][j] + integer_counts3[i][j] + integer_counts4[i][j];
+              }
+          }
+          if (differences > TL) return true;
+      }
+      return differences > TL;
   };
 
   auto ambiguityHandler = [&] (unsigned c1, unsigned c2) -> void {
@@ -485,7 +495,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
               if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c2])) {
                   if (resolutions[c2][c1]) {
                       ambig_count ++;
-                      ic1[(c1 << 2) | c1]++;
+                      integer_counts[c1][c1] ++;
                       return;
                   }
               }
@@ -508,8 +518,8 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
               if (matchMode == RESOLVE || (matchMode == SUBSET && resolveTheseAmbigs[c1])) {
                 if (resolutions[c1][c2]) {
                   ambig_count ++;
-                  ic1[(c2 << 2) | c2]++;
-                  return;
+                  integer_counts[c2][c2] ++;
+                    return;
                 }
               }
               
@@ -587,9 +597,9 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         for (unsigned long p = first_nongap; p <= last_nongap; p++) {
           unsigned char c1 = (unsigned char)s1[p],
                         c2 = (unsigned char)s2[p];
-
+          
           if (__builtin_expect((c1 | c2) < 4, 1)) {
-            ic1[(c1 << 2) | c2] ++;
+            integer_counts [c1][c2] ++;
           } else { // not both resolved
             if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
               p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) ;
@@ -599,100 +609,85 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
           }
         }
       }
-
-      #define UPDATE_IC(c1, c2) { \
-          ic1[((unsigned char)(c1) << 2) | (unsigned char)(c2)]++; \
-      }
-
-            else {
-
-              unsigned long p = first_nongap;
-              long total_s1_overlap[4] = {0,0,0,0}, consumed_s1[4] = {0,0,0,0};
-
-              if (id1 >= 0) {
-                  for (int i=0; i<4; i++) total_s1_overlap[i] = nucCounts.value(id1 * 4 + i);
-                  // Subtract bases in overhangs
-                  for (unsigned long pi = 0; pi < first_nongap; pi++) {
-                      unsigned char c = (unsigned char)s1[pi];
-                      if (c < 4) total_s1_overlap[c]--;
-                  }
-                  for (unsigned long pi = last_nongap + 1; pi < L; pi++) {
-                      unsigned char c = (unsigned char)s1[pi];
-                      if (c < 4) total_s1_overlap[c]--;
-                  }
+      else {
+        
+        unsigned long p = first_nongap;
+          
+        while (p < span_start) {
+            unsigned char c1 = (unsigned char)s1[p],   c2 = (unsigned char)s2[p];
+            
+            if (__builtin_expect((c1 | c2) < 4, 1)) {
+              integer_counts [c1][c2] ++;
+              p++;
+            } else { // not both resolved
+              if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+                p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) + 1;
               } else {
-                   for (unsigned long pi = first_nongap; pi <= last_nongap; pi++) {
-                      unsigned char c = (unsigned char)s1[pi];
-                      if (c < 4) {
-                          total_s1_overlap[c]++;
-                      } else if (IS_GAP(c, GAP)) {
-                          pi += GET_JUMP(c, GAP);
-                      }
-                  }
-              }
-
-              // Fast Hunter Pass
-              static thread_local unsigned long deferred_indices[4096];
-              unsigned long deferred_count = 0;
-
-              for (unsigned long hunter_p = first_nongap; hunter_p <= last_nongap; ) {
-                  unsigned char c1 = (unsigned char)s1[hunter_p], c2 = (unsigned char)s2[hunter_p];
-                  if (__builtin_expect(c1 == c2 && c1 < 4, 1)) {
-                      hunter_p++;
-                      continue;
-                  }
-                  // Something interesting
-                  if (deferred_count < 4096) {
-                      deferred_indices[deferred_count++] = hunter_p;
-                  } else {
-                      // Buffer full, unlikely for most genomic data but handle it
-                      if (c1 < 4) consumed_s1[c1]++;
-                      if (__builtin_expect((c1 | c2) < 4, 1)) {
-                          UPDATE_IC(c1, c2);
-                          hunter_p++;
-                      } else {
-                          if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
-                              hunter_p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) + 1;
-                          } else {
-                              ambiguityHandler (c1,c2);
-                              hunter_p++;
-                          }
-                      }
-                      continue;
-                  }
-
-                  if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
-                      hunter_p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) + 1;
-                  } else {
-                      hunter_p++;
-                  }
-              }
-
-              // Processor Pass
-              for (unsigned long i = 0; i < deferred_count; i++) {
-                  unsigned long curr_p = deferred_indices[i];
-                  unsigned char c1 = (unsigned char)s1[curr_p], c2 = (unsigned char)s2[curr_p];
-
-                  if (c1 < 4) consumed_s1[c1]++;
-
-                  if (__builtin_expect((c1 | c2) < 4, 1)) {
-                      UPDATE_IC(c1, c2);
-                  } else {
-                      ambiguityHandler(c1, c2);
-                  }
-              }
-
-              for (int i = 0; i < 4; i++) {
-                  ic1[(i << 2) | i] += (total_s1_overlap[i] - consumed_s1[i]);
+                ambiguityHandler (c1,c2);
+                p++;
               }
             }
+        }
+        
+        if (early_exit_check && check_early_exit(early_exit_check_T)) {
+            return 1.0;
+        }
+        
+        if (p < span_start) p = span_start;
 
-      } else {
+        if (p <= span_end) {
+            if (threshold > 0.0) {
+                while (p + 128 <= span_end) {
+                    for (unsigned long block_end = p + 128; p < block_end; p += 4) {
+                        integer_counts  [(unsigned char)s1[p]]   [(unsigned char)s2[p]]   ++;
+                        integer_counts2 [(unsigned char)s1[p+1]] [(unsigned char)s2[p+1]] ++;
+                        integer_counts3 [(unsigned char)s1[p+2]] [(unsigned char)s2[p+2]] ++;
+                        integer_counts4 [(unsigned char)s1[p+3]] [(unsigned char)s2[p+3]] ++;
+                    }
+                    if (check_early_exit(early_exit_check_T)) {
+                        return 1.0;
+                    }
+                }
+            }
+            
+            for (; p + 4 <= span_end ; p+=4) {
+                integer_counts  [(unsigned char)s1[p]]   [(unsigned char)s2[p]]   ++;
+                integer_counts2 [(unsigned char)s1[p+1]] [(unsigned char)s2[p+1]] ++;
+                integer_counts3 [(unsigned char)s1[p+2]] [(unsigned char)s2[p+2]] ++;
+                integer_counts4 [(unsigned char)s1[p+3]] [(unsigned char)s2[p+3]] ++;
+            }
+          
+            if (early_exit_check && check_early_exit(early_exit_check_T)) {
+                return 1.0;
+            }
+
+            for (; p <= span_end ; p++) {
+                integer_counts [(unsigned char)s1[p]][(unsigned char)s2[p]] ++;
+            }
+        }
+          
+        if (p < span_end + 1UL) p = span_end + 1UL;
+
+        for (; p <= last_nongap; p++) {
+          unsigned char c1 = (unsigned char)s1[p], c2 = (unsigned char)s2[p];
+ 
+          if (__builtin_expect((c1 | c2)<4,1)) {
+            integer_counts [c1][c2] ++;
+          } else { // not both resolved
+            if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+              p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP));
+              continue;
+            }
+            ambiguityHandler (c1,c2);
+          }
+        }
+      }
+    } else {
         for (unsigned long p = 0; p < L; p++) {
           unsigned char c1 = (unsigned char)s1[p], c2 = (unsigned char)s2[p];
-
+          
           if (__builtin_expect((c1 | c2) < 4,1)) {
-            ic1 [(c1 << 2) | c2] ++;
+            integer_counts [c1][c2] ++;
           } else { // not both resolved
             if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
               if (matchMode != GAPMM) {
@@ -712,18 +707,18 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
                 continue;
               }
             }
-
+            
             ambiguityHandler (c1,c2);
           }
         }
-      }
-      } else {
-      for (unsigned long p = 0; p < L; p++) {
+    }
+  } else {
+    for (unsigned long p = 0; p < L; p++) {
       long pi = randomize[p];
       unsigned char c1 = (unsigned char)s1[pi], c2 = (unsigned char)s2[pi];
-
+      
       if (__builtin_expect(c1 < 4 && c2 < 4,1)) {
-        ic1 [(c1 << 2) | c2] ++;
+        integer_counts [c1][c2] ++;
       } else { // not both resolved
         if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
           if (matchMode != GAPMM) {
@@ -745,23 +740,21 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
           ambiguityHandler (c1,c2);
         }
       }
-      }
-      }
-
-
-      //printf ("\n");
-      for (int c1 = 0; c1 < 4; c1++) {
-      //printf ("\n");
-      for (int c2 = 0; c2 < 4; c2++) {
-      int idx = (c1 << 2) | c2;
-      double pc = (float_counts[c1][c2] += (double)(ic1[idx] + ic2[idx] + ic3[idx] + ic4[idx]));
+    }
+  }
+  
+  
+  //printf ("\n");
+  for (int c1 = 0; c1 < 4; c1++) {
+    //printf ("\n");
+    for (int c2 = 0; c2 < 4; c2++) {
+      double pc = (float_counts[c1][c2] += (double)(integer_counts[c1][c2] + integer_counts2[c1][c2] + integer_counts3[c1][c2] + integer_counts4[c1][c2]));
       //printf ("%12.2g\t", pc);
       totalNonGap   += pc;
       nucFreq [c1]  += pc;
       nucFreq [c2]  += pc;
-      }
-      }
-
+    }
+  }
   //printf ("\ntotalNonGap = %g\n", totalNonGap);
 
   if (totalNonGap <= min_overlap) {
@@ -890,21 +883,6 @@ void addASequenceToList (StringBuffer& sequences, Vector& seqLengths, long &firs
 {
   sequences.appendChar ('\0');
   seqLengths.appendValue (sequences.length());
-
-  long current_seq_start = 0;
-  if (seqLengths.length() > 2) {
-      current_seq_start = seqLengths.value(seqLengths.length()-3);
-  }
-  const char* current_seq = sequences.getString() + current_seq_start;
-  long current_seq_len = sequences.length() - 1 - current_seq_start;
-
-  long counts[4] = {0,0,0,0};
-  for (long i = 0; i < current_seq_len; i++) {
-      unsigned char c = (unsigned char)current_seq[i];
-      if (c < 4) counts[c]++;
-  }
-  for (int i=0; i<4; i++) nucCounts.appendValue(counts[i]);
-
   if (seqLengths.length() == 2)
       {
     firstSequenceLength = stringLength (seqLengths, 0);
