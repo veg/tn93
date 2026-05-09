@@ -553,8 +553,8 @@ double computeTN93(const char *__restrict__ s1, const char *__restrict__ s2,
           }
         }
       } else {
-#define WORTH_DOING 1024
-#define PERIODIC_CHECK 512
+#define WORTH_DOING 512
+#define PERIODIC_CHECK 128
         unsigned long p = first_nongap;
 
         int ac_count = 0;
