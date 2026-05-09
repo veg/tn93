@@ -132,7 +132,11 @@ const double resolutionsCount_AA[]
 
 signed char validFlags[256];
 
+<<<<<<< HEAD
 //---------------------------------------------------------------
+=======
+signed char validFlags [256];
+>>>>>>> c9a319bbd547413d822531a06bf7bd2262242fb0
 
 void
 initAlphabets (bool doAminoAcid, char *resolutionSubset, bool id_map)
