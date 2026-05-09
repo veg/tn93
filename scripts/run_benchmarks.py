@@ -18,7 +18,7 @@ def run_command(cmd):
 def main():
     msa_dir = "/Users/sergei/Development/hivtrace-secure-server/test/realistic-national-2025/all/"
     ref_bin = "/usr/local/bin/tn93"
-    curr_bin = "./build/tn93"
+    curr_bin = "./tn93"
     
     files = get_msa_files(msa_dir)
     

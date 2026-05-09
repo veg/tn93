@@ -379,18 +379,14 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
   
   for (unsigned long char_idx = 0UL; char_idx < sequence_length; char_idx++) {
     unsigned char this_char = (unsigned char)source[char_idx];
-    if (IS_GAP(this_char, gap_val)) {
-        result.total_gaps++;
-    } else {
+    if (!IS_GAP(this_char, gap_val)) {
       if (char_idx < result.first_nongap) {
         result.first_nongap = char_idx;
       }
       if (char_idx > result.last_nongap) {
         result.last_nongap = char_idx;
       }
-      if (this_char >= char_count) {
-          result.total_ambigs++;
-      }
+      
     }
     if (this_char < char_count) { // not an ambig
       if (char_idx < start_run) {
@@ -399,6 +395,11 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
         end_run = char_idx;
       }
     } else { // an ambig or a gap
+        if (IS_GAP (this_char, gap_val)) {
+            result.total_gaps ++;
+        } else {
+            result.total_ambigs++;
+        }
       if (end_run >= start_run) {
         if (end_run - start_run > result.resolved_end - result.resolved_start) {
           result.resolved_start = start_run;
@@ -416,6 +417,8 @@ struct sequence_gap_structure describe_sequence (const char* source, const unsig
     }
   }
   
+  result.total_gaps -= (sequence_length - result.resolved_end - 1);
+    
   if (do_jumps && (char_count == 4 || char_count == 20) && result.first_nongap < result.last_nongap) {
       char *mutable_source = (char*)source;
       for (unsigned long i = result.first_nongap + 1; i < result.last_nongap; ) {
@@ -467,24 +470,24 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   float_counts [4][4] = {{0.},{0.},{0.},{0.}};
   
   long integer_counts  [4][4] = {{0L}, {0L}, {0L}, {0L}};
-  long integer_counts2 [4][4] = {{0L}, {0L}, {0L}, {0L}};
-  long integer_counts3 [4][4] = {{0L}, {0L}, {0L}, {0L}};
-  long integer_counts4 [4][4] = {{0L}, {0L}, {0L}, {0L}};
 
   bool early_exit_check = threshold > 0.0;
     
   const long early_exit_check_T = early_exit_check ? (long)(threshold*L) : L;
     
   auto check_early_exit = [&] (long TL) -> bool {
-      long differences = 0L;
-      for (int i = 0; i < 4; i++) {
-          for (int j = 0; j < 4; j++) {
-              if (i != j) {
-                  differences += integer_counts[i][j] + integer_counts2[i][j] + integer_counts3[i][j] + integer_counts4[i][j];
-              }
-          }
-          if (differences > TL) return true;
-      }
+      long differences = (integer_counts[0][1] ) +
+                         (integer_counts[0][2] ) +
+                         (integer_counts[0][3] ) +
+                         (integer_counts[1][0] ) +
+                         (integer_counts[1][2] ) +
+                         (integer_counts[1][3] ) +
+                         (integer_counts[2][0] ) +
+                         (integer_counts[2][1] ) +
+                         (integer_counts[2][3] ) +
+                         (integer_counts[3][0] ) +
+                         (integer_counts[3][1] ) +
+                         (integer_counts[3][2] );
       return differences > TL;
   };
 
@@ -613,7 +616,57 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         
         unsigned long p = first_nongap;
           
-        while (p < span_start) {
+          int ac_count = 0;
+          int * ac_pairs = (int*)alloca ((sequence_descriptor1->total_ambigs + sequence_descriptor2->total_ambigs)*sizeof (int));
+          
+#define   PERIODIC_CHECK 512
+          
+          while (p + PERIODIC_CHECK <= last_nongap) {
+              unsigned long p2 = p;
+              for (;p2 <= p + PERIODIC_CHECK; p2++) {
+                  unsigned char c1 = (unsigned char)s1[p2],   c2 = (unsigned char)s2[p2];
+                  
+                  if (__builtin_expect((c1 | c2) < 4, 1)) {
+                      integer_counts [c1][c2] ++;
+                  } else { // not both resolved
+                      if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+                          p2 += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) ;
+                      } else {
+                          ac_pairs[ac_count++] = (c1 << 8) + c2;
+                      }
+                  }
+                   
+              }
+              p = p2;
+              if (early_exit_check && check_early_exit(early_exit_check_T)) {
+                  return 1.0;
+              }
+
+          }
+
+              for (;p <= last_nongap; p++) {
+                  unsigned char c1 = (unsigned char)s1[p],   c2 = (unsigned char)s2[p];
+                  
+                  if (__builtin_expect((c1 | c2) < 4, 1)) {
+                    integer_counts [c1][c2] ++;
+                  } else { // not both resolved
+                      if (IS_GAP(c1, GAP) || IS_GAP(c2, GAP)) {
+                          p += MAX(GET_JUMP(c1, GAP), GET_JUMP(c2, GAP)) ;
+                      } else {
+                          ac_pairs[ac_count++] = (c1 << 8) + c2;
+                      }
+                  }
+              }
+                  
+                  for (int i = 0; i < ac_count; i++) {
+                      int ac = ac_pairs[i];
+                      ambiguityHandler (ac >> 8,ac& 255);
+                  }
+
+                  if (early_exit_check && check_early_exit(early_exit_check_T)) {
+                      return 1.0;
+                  }
+        /*while (p < span_start) {
             unsigned char c1 = (unsigned char)s1[p],   c2 = (unsigned char)s2[p];
             
             if (__builtin_expect((c1 | c2) < 4, 1)) {
@@ -638,11 +691,9 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
         if (p <= span_end) {
             if (threshold > 0.0) {
                 while (p + 128 <= span_end) {
-                    for (unsigned long block_end = p + 128; p < block_end; p += 4) {
+                    for (unsigned long block_end = p + 128; p < block_end; p += 2) {
                         integer_counts  [(unsigned char)s1[p]]   [(unsigned char)s2[p]]   ++;
                         integer_counts2 [(unsigned char)s1[p+1]] [(unsigned char)s2[p+1]] ++;
-                        integer_counts3 [(unsigned char)s1[p+2]] [(unsigned char)s2[p+2]] ++;
-                        integer_counts4 [(unsigned char)s1[p+3]] [(unsigned char)s2[p+3]] ++;
                     }
                     if (check_early_exit(early_exit_check_T)) {
                         return 1.0;
@@ -650,11 +701,9 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
                 }
             }
             
-            for (; p + 4 <= span_end ; p+=4) {
+            for (; p + 2 <= span_end ; p+=2) {
                 integer_counts  [(unsigned char)s1[p]]   [(unsigned char)s2[p]]   ++;
                 integer_counts2 [(unsigned char)s1[p+1]] [(unsigned char)s2[p+1]] ++;
-                integer_counts3 [(unsigned char)s1[p+2]] [(unsigned char)s2[p+2]] ++;
-                integer_counts4 [(unsigned char)s1[p+3]] [(unsigned char)s2[p+3]] ++;
             }
           
             if (early_exit_check && check_early_exit(early_exit_check_T)) {
@@ -680,7 +729,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
             }
             ambiguityHandler (c1,c2);
           }
-        }
+        }*/
       }
     } else {
         for (unsigned long p = 0; p < L; p++) {
@@ -748,7 +797,7 @@ double		computeTN93 (const char * __restrict__ s1, const char * __restrict__ s2,
   for (int c1 = 0; c1 < 4; c1++) {
     //printf ("\n");
     for (int c2 = 0; c2 < 4; c2++) {
-      double pc = (float_counts[c1][c2] += (double)(integer_counts[c1][c2] + integer_counts2[c1][c2] + integer_counts3[c1][c2] + integer_counts4[c1][c2]));
+      double pc = (float_counts[c1][c2] += (double)(integer_counts[c1][c2]));
       //printf ("%12.2g\t", pc);
       totalNonGap   += pc;
       nucFreq [c1]  += pc;
