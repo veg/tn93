@@ -30,7 +30,7 @@ const unsigned long masks [16] = {
     0b11000000000000000000000000000000
 };
 
-int  allowed_chars [255];
+int  allowed_chars [256];
 
 unsigned patternToCode (const StringBuffer& pattern) {
     
@@ -38,7 +38,7 @@ unsigned patternToCode (const StringBuffer& pattern) {
              L = pattern.length();
     
     for (int i = 0; i < L; i++) {
-        code += allowed_chars[pattern.getChar (i)] << (2*i);
+        code += allowed_chars[(unsigned char)pattern.getChar (i)] << (2*i);
     }
     
     cout << pattern.getString() << "=" << code << endl;
@@ -62,7 +62,7 @@ int main(int argc, const char *argv[]) {
     allowed_chars['G'] = 2;
     allowed_chars['T'] = 3;
     
-    char complement_chars[255] = {0};
+    char complement_chars[256] = {0};
     complement_chars['A'] = 'T';
     complement_chars['T'] = 'A';
     complement_chars['C'] = 'G';
@@ -81,7 +81,7 @@ int main(int argc, const char *argv[]) {
             if (args.rc == complement) {
                 StringBuffer rc;
                 for (int i = L-1; i>=0; i--) {
-                    rc.appendChar (complement_chars[pattern.getChar (i)]);
+                    rc.appendChar (complement_chars[(unsigned char)pattern.getChar (i)]);
                 }
                 patterns[L]->appendValue(patternToCode (rc));
             }
@@ -99,7 +99,7 @@ int main(int argc, const char *argv[]) {
         long firstSequenceLength = strlen (args.motif_list);
  
         for (unsigned i = 0; i < firstSequenceLength; i++) {
-            char current_char = toupper (args.motif_list[i]);
+            unsigned char current_char = toupper (args.motif_list[i]);
             if (allowed_chars [current_char] >= 0) {
                 automatonState = 1;
                 pattern.appendChar (current_char);
