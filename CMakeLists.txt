@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 project(TN93)
 
 #-------------------------------------------------------------------------------
@@ -194,6 +194,57 @@ install(
 	OPTIONAL
 )
 
-add_custom_target(NF
-	DEPENDS nucfreqsfasta
-)
+
+enable_testing()
+
+set(TN93_BIN ${CMAKE_CURRENT_BINARY_DIR}/tn93)
+set(REF_TN93_BIN /usr/local/bin/tn93)
+set(TEST_RUNNER ${CMAKE_CURRENT_SOURCE_DIR}/tests/test_runner.py)
+set(DATA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/data)
+set(GROUND_TRUTH_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/ground_truth)
+
+find_package(PythonInterp 3 REQUIRED)
+
+# Test 1: Small dataset, default settings
+add_test(NAME small_default COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/test.fas --name small_default --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 2: Small dataset, resolve ambiguities
+add_test(NAME small_resolve COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/test.fas --args "-a resolve" --name small_resolve --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 3: Small dataset, average ambiguities
+add_test(NAME small_average COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/test.fas --args "-a average" --name small_average --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 4: Small dataset, Hamming skip
+add_test(NAME small_hamming COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/test.fas --args "-H -t 0.05" --name small_hamming --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 5: Small dataset, custom overlap
+add_test(NAME small_overlap COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/test.fas --args "-l 50" --name small_overlap --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 6: Subset dataset, default
+add_test(NAME subset_default COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/subset.fasta --name subset_default --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 7: Subset dataset, Hamming skip
+add_test(NAME subset_hamming COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/subset.fasta --args "-H -t 0.015" --name subset_hamming --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 8: Small dataset, csvn format
+add_test(NAME small_csvn COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/test.fas --args "-f csvn" --name small_csvn --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 9: Small dataset, gapmm
+add_test(NAME small_gapmm COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/test.fas --args "-a gapmm" --name small_gapmm --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 10: Large dataset, default
+add_test(NAME large_default COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/large.fasta --name large_default --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 11: Large dataset, Hamming skip
+add_test(NAME large_hamming COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/large.fasta --args "-H -t 0.015" --name large_hamming --ground-truth-dir ${GROUND_TRUTH_DIR})

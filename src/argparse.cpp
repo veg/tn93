@@ -1,356 +1,434 @@
 
-/* argument parsing ------------------------------------------------------------------------------------------------- */
+/* argument parsing
+ * -------------------------------------------------------------------------------------------------
+ */
 
+#include <cctype>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <cctype>
 
 #include "argparse.hpp"
 
 // some crazy shit for stringifying preprocessor directives
 #define STRIFY(x) #x
-#define TO_STR(x) STRIFY(x)
+#define TO_STR(x) STRIFY (x)
 
 namespace argparse
 {
-  const char usage[] =
-  "usage: " PROGNAME " [-h] "
-  "[-v] "
-  "[-o OUTPUT] "
-  "[-t THRESHOLD] "
-  "[-w MIN_THRESHOLD] "
-  "[-a AMBIGS] "
-  "[-g FRACTION] "
-  "[-l OVERLAP] "
-  "[-d COUNTS_IN_NAME] "
-  "[-f FORMAT] "
-  "[-s SECOND_FASTA] "
-  "[-b] "
-  "[-r] "
-  "[-c] "
-  "[-n] "
-  "[-0] "
-  "[-q] "
-  "[-D DELIMITER]"
-  "[FASTA]\n";
-  
-  const char help_msg[] =
-  "compute Tamura Nei 93 distances between aligned sequences\n"
-  "\n"
-  "optional arguments:\n"
-  "  -h, --help               show this help message and exit\n"
-  "  -v, --version            show tn93 version \n"
-  "  -o OUTPUT                direct the output to a file named OUTPUT (default=stdout)\n"
-  "  -t THRESHOLD             only report (count) distances below this threshold (>=0, default=" TO_STR (DEFAULT_DISTANCE)")\n"
-  "  -w MINIMUM THRESHOLD     report distances above minimum threshold \n"
-  "  -a AMBIGS                handle ambigous nucleotides using one of the following strategies (default=" TO_STR( DEFAULT_AMBIG ) ")\n"
-  "                           resolve: resolve ambiguities to minimize distance (e.g.R matches A);\n"
-  "                           average: average ambiguities (e.g.R-A is 0.5 A-A and 0.5 G-A);\n"
-  "                           skip: do not include sites with ambiguous nucleotides in distance calculations;\n"
-  "                           gapmm: a gap ('-') matched to anything other than another gap is like matching an N (4-fold ambig) to it;\n"
-  "                           a string (e.g. RY): any ambiguity in the list is RESOLVED; any ambiguitiy NOT in the list is averaged (LIST-NOT LIST will also be averaged);\n"
-  "  -g FRACTION              in combination with AMBIGS, works to limit (for resolve and string options to AMBIG)\n"
-  "                           the maximum tolerated FRACTION of ambiguous characters; sequences whose pairwise comparisons\n"
-  "                           include no more than FRACTION [0,1] of sites with resolvable ambiguities will be resolved\n"
-  "                           while all others will be AVERAGED (default = " TO_STR ( DEFAULT_FRACTION ) ")\n"
-  "  -f FORMAT                controls the format of the output unless -c is set (default=" TO_STR( DEFAULT_FORMAT ) ")\n"
-  "                           csv: seqname1, seqname2, distance;\n"
-  "                           csvn: 1, 2, distance;\n"
-  "                           hyphy: {{d11,d12,..,d1n}...{dn1,dn2,...,dnn}}, where distances above THRESHOLD are set to 100;\n"
-  "  -l OVERLAP               only process pairs of sequences that overlap over at least OVERLAP nucleotides (an integer >0, default=" TO_STR( DEFAULT_OVERLAP ) "):\n"
-  "  -d COUNTS_IN_NAME        if sequence name is of the form 'somethingCOUNTS_IN_NAMEinteger' then treat the integer as a copy number\n"
-  "                           when computing distance histograms (a character, default=" TO_STR( DEFAULT_COUNTS_IN_NAME ) "):\n"
-  "  -s SECOND_FASTA          if specified, read another FASTA file from SECOND_FASTA and perform pairwise comparison BETWEEN the files (default=NULL)\n"
-  "  -b                       bootstrap alignment columns before computing distances (default = false)\n"
-  "                           when -s is supplied, permutes the assigment of sequences to files\n"
-  "                           interacts with -r option\n"
-  "  -r                       if -b is specified AND -s is supplied, using -r will bootstrap across sites\n"
-  "                           instead of allocating sequences to 'compartments' randomly\n"
-  "  -c                       only count the pairs below a threshold, do not write out all the pairs \n"
-  "  -n                       if set, do NOT write out headers for delimited files (default is to write) \n"
-  "  -m                       compute inter- and intra-population means suitable for FST caclulations\n"
-  "                           only applied when -s is used to provide a second file\n"
-  "  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = " TO_STR ( DEFAULT_INCLUDE_PROB) ")\n"
-  "  -D DELIMITER             use this character as a delimiter in the output column-file (a character, default = " TO_STR ( DEFAULT_DELIMITER) ")\n"
-  "  -0                       report distances between each sequence and itself (as 0); this is useful to ensure every sequence\n"
-  "                           in the input file appears in the output, e.g. for network construction to contrast clustered/unclustered\n"
-  "  -q                       do not report progress updates and other diagnostics to stderr \n"
-  "  FASTA                    read sequences to compare from this file (default=stdin)\n";
-  
-  inline
-  void help()
-  {
-    fprintf( stderr, "%s\n%s", usage, help_msg );
-    exit( 1 );
-  }
+const char usage[] = "usage: " PROGNAME " [-h] "
+                     "[-v] "
+                     "[-o OUTPUT] "
+                     "[-t THRESHOLD] "
+                     "[-w MIN_THRESHOLD] "
+                     "[-a AMBIGS] "
+                     "[-g FRACTION] "
+                     "[-l OVERLAP] "
+                     "[-d COUNTS_IN_NAME] "
+                     "[-f FORMAT] "
+                     "[-s SECOND_FASTA] "
+                     "[-b] "
+                     "[-r] "
+                     "[-c] "
+                     "[-n] "
+                     "[-0] "
+                     "[-q] "
+                     "[-H] "
+                     "[-D DELIMITER]"
+                     "[FASTA]\n";
 
-  inline
-  void version()
-  {
-    fprintf( stderr, "%s\n", VERSION_NUMBER);
-    exit( 0 );
-  }
+const char help_msg[]
+    = "compute Tamura Nei 93 distances between aligned sequences\n"
+      "\n"
+      "optional arguments:\n"
+      "  -h, --help               show this help message and exit\n"
+      "  -v, --version            show tn93 version \n"
+      "  -o OUTPUT                direct the output to a file named OUTPUT "
+      "(default=stdout)\n"
+      "  -t THRESHOLD             only report (count) distances below this "
+      "threshold (>=0, default=" TO_STR (DEFAULT_DISTANCE) ")\n"
+                                                           "  -w MINIMUM "
+                                                           "THRESHOLD     "
+                                                           "report distances "
+                                                           "above minimum "
+                                                           "threshold \n"
+                                                           "  -a AMBIGS       "
+                                                           "         handle "
+                                                           "ambigous "
+                                                           "nucleotides using "
+                                                           "one of the "
+                                                           "following "
+                                                           "strategies "
+                                                           "(default=" TO_STR (DEFAULT_AMBIG) ")\n"
+                                                                                              "                           resolve: resolve ambiguities to minimize distance (e.g.R matches A);\n"
+                                                                                              "                           average: average ambiguities (e.g.R-A is 0.5 A-A and 0.5 G-A);\n"
+                                                                                              "                           skip: do not include sites with ambiguous nucleotides in distance calculations;\n"
+                                                                                              "                           gapmm: a gap ('-') matched to anything other than another gap is like matching an N (4-fold ambig) to it;\n"
+                                                                                              "                           a string (e.g. RY): any ambiguity in the list is RESOLVED; any ambiguitiy NOT in the list is averaged (LIST-NOT LIST will also be averaged);\n"
+                                                                                              "  -g FRACTION              in combination with AMBIGS, works to limit (for resolve and string options to AMBIG)\n"
+                                                                                              "                           the maximum tolerated FRACTION of ambiguous characters; sequences whose pairwise comparisons\n"
+                                                                                              "                           include no more than FRACTION [0,1] of sites with resolvable ambiguities will be resolved\n"
+                                                                                              "                           while all others will be AVERAGED (default = " TO_STR (DEFAULT_FRACTION) ")\n"
+                                                                                                                                                                                                   "  -f FORMAT                controls the format of the output unless -c is set (default=" TO_STR (DEFAULT_FORMAT) ")\n"
+                                                                                                                                                                                                                                                                                                                     "                           csv: seqname1, seqname2, distance;\n"
+                                                                                                                                                                                                                                                                                                                     "                           csvn: 1, 2, distance;\n"
+                                                                                                                                                                                                                                                                                                                     "                           hyphy: {{d11,d12,..,d1n}...{dn1,dn2,...,dnn}}, where distances above THRESHOLD are set to 100;\n"
+                                                                                                                                                                                                                                                                                                                     "  -l OVERLAP               only process pairs of sequences that overlap over at least OVERLAP nucleotides (an integer >0, default=" TO_STR (DEFAULT_OVERLAP) "):\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   "  -d COUNTS_IN_NAME        if sequence name is of the form 'somethingCOUNTS_IN_NAMEinteger' then treat the integer as a copy number\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   "                           when computing distance histograms (a character, default=" TO_STR (
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       DEFAULT_COUNTS_IN_NAME) "):\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "  -s SECOND_FASTA          if specified, read another FASTA file from SECOND_FASTA and perform pairwise comparison BETWEEN the files (default=NULL)\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "  -b                       bootstrap alignment columns before computing distances (default = false)\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "                           when -s is supplied, permutes the assigment of sequences to files\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "                           interacts with -r option\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "  -r                       if -b is specified AND -s is supplied, using -r will bootstrap across sites\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "                           instead of allocating sequences to 'compartments' randomly\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "  -c                       only count the pairs below a threshold, do not write out all the pairs \n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "  -n                       if set, do NOT write out headers for delimited files (default is to write) \n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "  -m                       compute inter- and intra-population means suitable for FST caclulations\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "                           only applied when -s is used to provide a second file\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               "  -u PROBABILITY           subsample sequences with specified probability (a value between 0 and 1, default = " TO_STR (DEFAULT_INCLUDE_PROB) ")\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              "  -D DELIMITER             use this character as a delimiter in the output column-file (a character, default = " TO_STR (
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  DEFAULT_DELIMITER) ")\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "  -0                       report distances between each sequence and itself (as 0); this is useful to ensure every sequence\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "                           in the input file appears in the output, e.g. for network construction to contrast clustered/unclustered\n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "  -q                       do not report progress updates and other diagnostics to stderr \n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "  -H                       use Hamming distance early exit to speed up distance calculations \n"
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "  FASTA                    read sequences to compare from this file (default=stdin)\n";
 
-  
-  inline
-  void ERROR( const char * msg, ... )
-  {
-    va_list args;
-    fprintf( stderr, "%s" PROGNAME ": error: ", usage );
-    va_start( args, msg );
-    vfprintf( stderr, msg, args );
-    va_end( args );
-    fprintf( stderr, "\n" );
-    exit( 1 );
-  }
-  
-  const char * next_arg (int& i, const int argc, const char * argv[]) {
-    i++;
-    if (i == argc)
-      ERROR ("ran out of command line arguments");
-    
-    return argv[i];
-    
-  }
-  
-  args_t::args_t( int argc, const char * argv[] ) :
-  output( stdout ),
-  input1( stdin ),
-  input2( NULL ),
-  distance( DEFAULT_DISTANCE ),
-  min_distance( DEFAULT_MIN_DISTANCE ),
-  ambig( DEFAULT_AMBIG ),
-  format ( DEFAULT_FORMAT ),
-  overlap ( DEFAULT_OVERLAP ),
-  do_bootstrap( false ),
-  do_bootstrap_two_files ( false ),
-  do_count( false ),
-  quiet( false ),
-  do_fst( false ),
-  skip_header ( false ),
-  report_self ( false ),
-  counts_in_name ( DEFAULT_COUNTS_IN_NAME ),
-  include_prob( DEFAULT_INCLUDE_PROB ),
-  ambigs_to_resolve(NULL),
-  resolve_fraction(DEFAULT_FRACTION),
-  delimiter (DEFAULT_DELIMITER)
-  {
-      // skip arg[0], it's just the program name
-    for (int i = 1; i < argc; ++i ) {
-      const char * arg = argv[i];
-      
-      if ( arg[0] == '-' && arg[1] == '-' ) {
-        if ( !strcmp( &arg[2], "help" ) ) help();
-        else if ( !strcmp( &arg[2], "version" ) ) version();
-        else
-          ERROR( "unknown argument: %s", arg );
-      }
-      else if ( arg[0] == '-' ) {
-        if ( !strcmp( &arg[1], "h" ) ) help();
-        else if (  arg[1] == 'v' ) version();
-        else if (  arg[1] == 'o' ) parse_output( next_arg (i, argc, argv) );
-        else if (  arg[1] == 't' ) parse_distance ( next_arg (i, argc, argv) );
-        else if (  arg[1] == 'w' ) parse_min_distance ( next_arg (i, argc, argv) );
-        else if (  arg[1] == 'l')  parse_overlap( next_arg (i, argc, argv) );
-        else if (  arg[1] == 'f')  parse_format( next_arg (i, argc, argv) );
-        else if (  arg[1] == 'a')  parse_ambig( next_arg (i, argc, argv) );
-        else if (  arg[1] == 's')  parse_second_in( next_arg (i, argc, argv) );
-        else if (  arg[1] == 'd')  parse_counts_in_name( next_arg (i, argc, argv) );
-        else if (  arg[1] == 'u')  parse_include_prob( next_arg (i, argc, argv) );
-        else if (  arg[1] == 'D')  parse_delimiter ( next_arg (i, argc, argv) );
-        else if (  arg[1] == 'b')  parse_bootstrap();
-        else if (  arg[1] == 'r')  parse_bootstrap_two_files ();
-        else if (  arg[1] == 'c')  parse_count();
-        else if (  arg[1] == 'n')  parse_no_header ();
-        else if (  arg[1] == 'q')  parse_quiet();
-        else if (  arg[1] == 'm')  parse_fst();
-        else if (  arg[1] == '0')  parse_report_self();
-        else if (  arg[1] == 'g')  parse_fraction( next_arg (i, argc, argv) );
-        else
-          ERROR( "unknown argument: %s", arg );
-      }
-      else
-        if (i == argc-1) {
+inline void
+help ()
+{
+  fprintf (stderr, "%s\n%s", usage, help_msg);
+  exit (1);
+}
+
+inline void
+version ()
+{
+  fprintf (stderr, "%s\n", VERSION_NUMBER);
+  exit (0);
+}
+
+inline void
+ERROR (const char *msg, ...)
+{
+  va_list args;
+  fprintf (stderr, "%s" PROGNAME ": error: ", usage);
+  va_start (args, msg);
+  vfprintf (stderr, msg, args);
+  va_end (args);
+  fprintf (stderr, "\n");
+  exit (1);
+}
+
+const char *
+next_arg (int &i, const int argc, const char *argv[])
+{
+  i++;
+  if (i == argc)
+    ERROR ("ran out of command line arguments");
+
+  return argv[i];
+}
+
+args_t::args_t (int argc, const char *argv[])
+    : output (stdout), input1 (stdin), input2 (NULL),
+      distance (DEFAULT_DISTANCE), min_distance (DEFAULT_MIN_DISTANCE),
+      ambig (DEFAULT_AMBIG), format (DEFAULT_FORMAT),
+      overlap (DEFAULT_OVERLAP), do_bootstrap (false),
+      do_bootstrap_two_files (false), do_count (false), quiet (false),
+      do_fst (false), skip_header (false), report_self (false),
+      hamming_skip (false), counts_in_name (DEFAULT_COUNTS_IN_NAME),
+      include_prob (DEFAULT_INCLUDE_PROB), ambigs_to_resolve (NULL),
+      resolve_fraction (DEFAULT_FRACTION), delimiter (DEFAULT_DELIMITER)
+{
+  // skip arg[0], it's just the program name
+  for (int i = 1; i < argc; ++i)
+    {
+      const char *arg = argv[i];
+
+      if (arg[0] == '-' && arg[1] == '-')
+        {
+          if (!strcmp (&arg[2], "help"))
+            help ();
+          else if (!strcmp (&arg[2], "version"))
+            version ();
+          else if (!strcmp (&arg[2], "hamming-skip"))
+            parse_hamming_skip ();
+          else
+            ERROR ("unknown argument: %s", arg);
+        }
+      else if (arg[0] == '-')
+        {
+          if (!strcmp (&arg[1], "h"))
+            help ();
+          else if (arg[1] == 'v')
+            version ();
+          else if (arg[1] == 'o')
+            parse_output (next_arg (i, argc, argv));
+          else if (arg[1] == 't')
+            parse_distance (next_arg (i, argc, argv));
+          else if (arg[1] == 'w')
+            parse_min_distance (next_arg (i, argc, argv));
+          else if (arg[1] == 'l')
+            parse_overlap (next_arg (i, argc, argv));
+          else if (arg[1] == 'f')
+            parse_format (next_arg (i, argc, argv));
+          else if (arg[1] == 'a')
+            parse_ambig (next_arg (i, argc, argv));
+          else if (arg[1] == 's')
+            parse_second_in (next_arg (i, argc, argv));
+          else if (arg[1] == 'd')
+            parse_counts_in_name (next_arg (i, argc, argv));
+          else if (arg[1] == 'u')
+            parse_include_prob (next_arg (i, argc, argv));
+          else if (arg[1] == 'D')
+            parse_delimiter (next_arg (i, argc, argv));
+          else if (arg[1] == 'b')
+            parse_bootstrap ();
+          else if (arg[1] == 'r')
+            parse_bootstrap_two_files ();
+          else if (arg[1] == 'c')
+            parse_count ();
+          else if (arg[1] == 'n')
+            parse_no_header ();
+          else if (arg[1] == 'q')
+            parse_quiet ();
+          else if (arg[1] == 'H')
+            parse_hamming_skip ();
+          else if (arg[1] == 'm')
+            parse_fst ();
+          else if (arg[1] == '0')
+            parse_report_self ();
+          else if (arg[1] == 'g')
+            parse_fraction (next_arg (i, argc, argv));
+          else
+            ERROR ("unknown argument: %s", arg);
+        }
+      else if (i == argc - 1)
+        {
           parse_input (arg);
-        } else {
-          ERROR( "unknown argument: %s", arg );
+        }
+      else
+        {
+          ERROR ("unknown argument: %s", arg);
         }
     }
-  }
-  
-  args_t::~args_t() {
-    if ( output && output != stdout )
-      fclose( output );
-    
-    if ( input1 && input1 != stdin)
-      fclose (input1);
-    
-    if ( input2 && input2 != stdin)
-      fclose (input2);
-  }
+}
 
-  
-  void args_t::parse_output( const char * str )
-  {
-    if ( str && strcmp( str, "-" ) )
-      output = fopen( str, "wb" );
-    else
-      output = stdout;
-    
-    if ( !output )
-      ERROR( "failed to open the OUTPUT file %s", str );
-  }
-  
-  void args_t::parse_input( const char * str )
-  {
-    if ( str && strcmp( str, "-" ) )
-      input1 = fopen( str, "rb" );
-    else
-      input1 = stdin;
-    
-    if ( !input1 )
-      ERROR( "failed to open the INPUT file %s", str );
-    if (input1 == input2)
-      ERROR( "input FASTA files must not both be stdin %s", str );
-  }
-  
-  void args_t::parse_second_in( const char * str )
-  {
-    if ( str && strcmp( str, "-" ) )
-      input2 = fopen( str, "rb" );
-    else
-      input2 = stdin;
-    
-    if ( !input2 )
-      ERROR( "failed to open the second INPUT file %s", str );
-    if (input1 == input2)
-      ERROR( "input FASTA files must not both be stdin %s", str );
-  }
+args_t::~args_t ()
+{
+  if (output && output != stdout)
+    fclose (output);
 
+  if (input1 && input1 != stdin)
+    fclose (input1);
 
-  void args_t::parse_distance ( const char * str )
-  {
-    distance = atof( str );
-    
-    if ( distance < 0.0 || distance > 1.0)
-      ERROR( "genetic distance threshold must be in [0,1], had: %s", str );
-  }
+  if (input2 && input2 != stdin)
+    fclose (input2);
+}
 
-  void args_t::parse_min_distance ( const char * str )
-  {
-    min_distance = atof( str );
-    
-    if ( min_distance < 0.0 || min_distance > 1.0)
-      ERROR( "genetic minimum distance threshold must be in [0,1], had: %s", str );
-  }
+void
+args_t::parse_output (const char *str)
+{
+  if (str && strcmp (str, "-"))
+    output = fopen (str, "wb");
+  else
+    output = stdout;
 
+  if (!output)
+    ERROR ("failed to open the OUTPUT file %s", str);
+}
 
-  void args_t::parse_fraction ( const char * str )
-  {
-    resolve_fraction = atof( str );
-    
-    if ( resolve_fraction < 0.0 || resolve_fraction > 1.0)
-      ERROR( "resolve ambigous fraction must be in [0,1], had: %s", str );
-  }
+void
+args_t::parse_input (const char *str)
+{
+  if (str && strcmp (str, "-"))
+    input1 = fopen (str, "rb");
+  else
+    input1 = stdin;
 
-  void args_t::parse_include_prob ( const char * str )
-  {
-    include_prob = atof( str );
-    
-    if ( include_prob < 0.0 || include_prob > 1.0)
-      ERROR( "sequence inclusion probability must be in [0,1], had: %s", str );
-  }
+  if (!input1)
+    ERROR ("failed to open the INPUT file %s", str);
+  if (input1 == input2)
+    ERROR ("input FASTA files must not both be stdin %s", str);
+}
 
+void
+args_t::parse_second_in (const char *str)
+{
+  if (str && strcmp (str, "-"))
+    input2 = fopen (str, "rb");
+  else
+    input2 = stdin;
 
-  void args_t::parse_counts_in_name ( const char * str )
-  {
-    counts_in_name = str[0];
-    
-    if ( ! isprint (counts_in_name))
-      ERROR( "count separator must be a printable character, had: %s", str );
-  }
+  if (!input2)
+    ERROR ("failed to open the second INPUT file %s", str);
+  if (input1 == input2)
+    ERROR ("input FASTA files must not both be stdin %s", str);
+}
 
-  void args_t::parse_overlap ( const char * str )
-  {
-    overlap = atoi( str );
-    
-    if ( overlap == 0 )
-      ERROR( "overlap must be positive, had: %s", str );
-  }
-  
-  void args_t::parse_ambig( const char * str )
-  {
-    if (!strcmp (str, "resolve")) {
+void
+args_t::parse_distance (const char *str)
+{
+  distance = atof (str);
+
+  if (distance < 0.0 || distance > 1.0)
+    ERROR ("genetic distance threshold must be in [0,1], had: %s", str);
+}
+
+void
+args_t::parse_min_distance (const char *str)
+{
+  min_distance = atof (str);
+
+  if (min_distance < 0.0 || min_distance > 1.0)
+    ERROR ("genetic minimum distance threshold must be in [0,1], had: %s",
+           str);
+}
+
+void
+args_t::parse_fraction (const char *str)
+{
+  resolve_fraction = atof (str);
+
+  if (resolve_fraction < 0.0 || resolve_fraction > 1.0)
+    ERROR ("resolve ambigous fraction must be in [0,1], had: %s", str);
+}
+
+void
+args_t::parse_include_prob (const char *str)
+{
+  include_prob = atof (str);
+
+  if (include_prob < 0.0 || include_prob > 1.0)
+    ERROR ("sequence inclusion probability must be in [0,1], had: %s", str);
+}
+
+void
+args_t::parse_counts_in_name (const char *str)
+{
+  counts_in_name = str[0];
+
+  if (!isprint (counts_in_name))
+    ERROR ("count separator must be a printable character, had: %s", str);
+}
+
+void
+args_t::parse_overlap (const char *str)
+{
+  overlap = atoi (str);
+
+  if (overlap == 0)
+    ERROR ("overlap must be positive, had: %s", str);
+}
+
+void
+args_t::parse_ambig (const char *str)
+{
+  if (!strcmp (str, "resolve"))
+    {
       ambig = resolve;
-    } else if (!strcmp (str, "average")) {
+    }
+  else if (!strcmp (str, "average"))
+    {
       ambig = average;
-    } else if (!strcmp (str, "skip")) {
+    }
+  else if (!strcmp (str, "skip"))
+    {
       ambig = skip;
-    } else if (!strcmp (str, "gapmm")) {
+    }
+  else if (!strcmp (str, "gapmm"))
+    {
       ambig = gapmm;
-    } else {
+    }
+  else
+    {
       ambig = subset;
-      ambigs_to_resolve = new char [strlen (str) + 1];
+      ambigs_to_resolve = new char[strlen (str) + 1];
       strcpy (ambigs_to_resolve, str);
     }
-  }
+}
 
-  void args_t::parse_delimiter( const char * str )
+void
+args_t::parse_delimiter (const char *str)
+{
+  if (strlen (str) == 1)
     {
-      if (strlen (str) == 1) {
-          delimiter = str[0];
-      } else {
-          ERROR( "invalid output format: %s", str );
-      }
+      delimiter = str[0];
     }
-  
-
-    void args_t::parse_format( const char * str )
+  else
     {
-      if (!strcmp (str, "csv")) {
-        format = csv;
-      } else if (!strcmp (str, "csvn")) {
-        format = csvn;
-      } else if (!strcmp (str, "hyphy")) {
-        format = hyphy;
-      } else  {
-        ERROR( "invalid output format: %s", str );
-      }
+      ERROR ("invalid output format: %s", str);
     }
-  
-  void args_t::parse_count()
-  {
-    do_count = true;
-  }
+}
 
-  void args_t::parse_no_header()
-  {
-    skip_header = true;
-  }
+void
+args_t::parse_format (const char *str)
+{
+  if (!strcmp (str, "csv"))
+    {
+      format = csv;
+    }
+  else if (!strcmp (str, "csvn"))
+    {
+      format = csvn;
+    }
+  else if (!strcmp (str, "hyphy"))
+    {
+      format = hyphy;
+    }
+  else
+    {
+      ERROR ("invalid output format: %s", str);
+    }
+}
 
-  void args_t::parse_bootstrap()
-  {
-    do_bootstrap = true;
-  }
+void
+args_t::parse_count ()
+{
+  do_count = true;
+}
 
-  void args_t::parse_bootstrap_two_files ()
-  {
-    do_bootstrap_two_files = true;
-  }
-  
-  void args_t::parse_quiet()
-  {
-    quiet = true;
-  }
+void
+args_t::parse_no_header ()
+{
+  skip_header = true;
+}
 
-  void args_t::parse_fst()
-  {
-    do_fst = true;
-  }
-  void args_t::parse_report_self()
-  {
-    report_self = true;
-  }
+void
+args_t::parse_bootstrap ()
+{
+  do_bootstrap = true;
+}
+
+void
+args_t::parse_bootstrap_two_files ()
+{
+  do_bootstrap_two_files = true;
+}
+
+void
+args_t::parse_quiet ()
+{
+  quiet = true;
+}
+
+void
+args_t::parse_fst ()
+{
+  do_fst = true;
+}
+void
+args_t::parse_report_self ()
+{
+  report_self = true;
+}
+void
+args_t::parse_hamming_skip ()
+{
+  hamming_skip = true;
+}
 }
