@@ -1,3 +1,23 @@
+# Release Notes: tn93 v1.0.17
+
+This is a packaging release. Every GitHub release now ships prebuilt WebAssembly artifacts for all eleven tools, alongside the existing source tarballs. There are no changes to distance computation or command-line behaviour.
+
+## Key Changes Since v1.0.16
+
+### 1. WebAssembly Release Artifacts
+*   **Automated wasm builds**: A new `WebAssembly release build` workflow (`.github/workflows/wasm-release.yml`) runs on every published release, compiles all tools with Emscripten, and attaches `tn93-<version>-wasm.tar.gz` and `.zip` to the release.
+*   **Modularized output**: Each tool is emitted as a `<tool>.js` + `<tool>.wasm` pair exposing a `create_<tool>` factory with `FS` and `callMain` exported, so callers write input into the virtual filesystem and invoke the tool with its normal arguments. Memory growth is enabled for large alignments.
+*   **Single-threaded by design**: OpenMP is skipped entirely under Emscripten so the artifacts run without SharedArrayBuffer or cross-origin isolation.
+*   **Smoke test**: `tests/wasm_smoke.js` runs a module under Node; its output on `data/test.fas` is byte-identical to the native binary.
+*   **Local builds**: `emcmake cmake -B build-wasm && cmake --build build-wasm` produces the same artifacts locally with the Emscripten SDK installed.
+
+### 2. Maintenance
+*   **Documentation**: README gains a WebAssembly section covering artifacts, the module API, and local build steps.
+*   **Hygiene**: `build/` and `build-wasm/` are now ignored.
+
+---
+**Build Requirements**: CMake 3.5+, Python 3 (for tests), OpenMP-capable compiler. Emscripten SDK for wasm builds.
+
 # Release Notes: tn93 v1.0.16
 
 This release introduces major performance optimizations, new screening features, and a robust automated testing infrastructure. It represents a significant step forward in scaling `tn93` to handle modern large-scale genomic datasets.
