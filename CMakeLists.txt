@@ -113,9 +113,14 @@ add_executable(
 
 #add_definitions(${DEFAULT_COMPILE_OPTIONS})
 
-find_package(OpenMP)
+# OpenMP is deliberately skipped under Emscripten: the WebAssembly build is
+# single-threaded so the artifacts do not require SharedArrayBuffer /
+# cross-origin isolation to run.
+if(NOT EMSCRIPTEN)
+   find_package(OpenMP)
+endif(NOT EMSCRIPTEN)
 
-if(${OPENMP_FOUND})
+if(OPENMP_FOUND)
    add_definitions(${OpenMP_CXX_FLAGS})
    target_link_libraries(tn93 PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(tn93-cluster PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
@@ -125,7 +130,27 @@ if(${OPENMP_FOUND})
    target_link_libraries(fasta_diff PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(ShortestPathTN93 PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(seqdiff PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
-endif(${OPENMP_FOUND})
+endif(OPENMP_FOUND)
+
+#-------------------------------------------------------------------------------
+# WebAssembly (Emscripten) build settings
+#-------------------------------------------------------------------------------
+if(EMSCRIPTEN)
+   set(WASM_TARGETS tn93 tn93-cluster seqcoverage readreduce nucfreqsfasta
+       ShortestPathTN93 selectreads validate_fasta fasta_digest fasta_diff seqdiff)
+   foreach(wasm_target ${WASM_TARGETS})
+      string(REPLACE "-" "_" wasm_export_name ${wasm_target})
+      target_link_options(${wasm_target} PRIVATE
+         -sMODULARIZE=1
+         -sEXPORT_NAME=create_${wasm_export_name}
+         -sALLOW_MEMORY_GROWTH=1
+         -sFORCE_FILESYSTEM=1
+         -sINVOKE_RUN=0
+         -sEXIT_RUNTIME=1
+         "-sEXPORTED_RUNTIME_METHODS=['FS','callMain']"
+      )
+   endforeach()
+endif(EMSCRIPTEN)
 
 
 

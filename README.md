@@ -23,6 +23,26 @@ to set a different install path.
 If the compiler supports OpenMP, the program will be built with multithreaded
 support.
 
+WEBASSEMBLY
+-----------
+
+Every GitHub release also ships a WebAssembly build of all tools
+(`tn93-<version>-wasm.tar.gz` / `.zip`), produced by the
+`WebAssembly release build` workflow using [Emscripten](https://emscripten.org).
+Each tool is emitted as a modularized `<tool>.js` + `<tool>.wasm` pair that
+exposes a factory named `create_<tool>` (dashes replaced by underscores, e.g.
+`create_tn93_cluster`). The module exports `FS` and `callMain`, so callers
+write input into the virtual filesystem and invoke the tool with its normal
+command-line arguments. The wasm build is single-threaded (no OpenMP).
+
+To build locally with the Emscripten SDK on your PATH:
+
+```
+emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release
+cmake --build build-wasm
+node tests/wasm_smoke.js build-wasm/tn93.js data/test.fas -t 0.05
+```
+
 USAGE
 -----
 
