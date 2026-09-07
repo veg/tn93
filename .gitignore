@@ -12,3 +12,5 @@ validate_fasta
 tn93-cluster
 fasta_diff
 seqdiff
+build/
+build-wasm/
