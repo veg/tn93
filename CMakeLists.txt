@@ -113,9 +113,14 @@ add_executable(
 
 #add_definitions(${DEFAULT_COMPILE_OPTIONS})
 
-find_package(OpenMP)
+# OpenMP is deliberately skipped under Emscripten: the WebAssembly build is
+# single-threaded so the artifacts do not require SharedArrayBuffer /
+# cross-origin isolation to run.
+if(NOT EMSCRIPTEN)
+   find_package(OpenMP)
+endif(NOT EMSCRIPTEN)
 
-if(${OPENMP_FOUND})
+if(OPENMP_FOUND)
    add_definitions(${OpenMP_CXX_FLAGS})
    target_link_libraries(tn93 PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(tn93-cluster PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
@@ -125,7 +130,7 @@ if(${OPENMP_FOUND})
    target_link_libraries(fasta_diff PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(ShortestPathTN93 PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
    target_link_libraries(seqdiff PRIVATE ${DEFAULT_LIBRARIES} OpenMP::OpenMP_CXX)
-endif(${OPENMP_FOUND})
+endif(OPENMP_FOUND)
 
 #-------------------------------------------------------------------------------
 # WebAssembly (Emscripten) build settings
