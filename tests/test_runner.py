@@ -85,8 +85,8 @@ def main():
             
         print(f"Generating ground truth for {args.name}...")
         temp_csv = f"{args.name}_full_ref.csv"
-        # Strip -H from reference arguments since reference binary might not support it
-        ref_args = args.args.replace("-H", "").strip()
+        # Strip -H and --subquadratic from reference arguments since reference binary might not support them
+        ref_args = args.args.replace("-H", "").replace("--subquadratic", "").replace("-S", "").strip()
         stdout, stderr, rc = run_tn93(args.ref_binary, ref_args, args.input, temp_csv)
         if rc != 0:
             print(f"Reference binary failed with code {rc}")
@@ -141,6 +141,8 @@ def main():
     ignore_keys = []
     if "-H" in args.args:
         ignore_keys = ["Histogram", "Maximum distance", "Mean distance", "Note"]
+    if "--subquadratic" in args.args or "-S" in args.args:
+        ignore_keys = ["Histogram", "Maximum distance", "Mean distance", "Note", "Actual comparisons performed", "Comparisons accounting for copy numbers "]
     
     filtered_ref = filter_json(ref_data, ignore_keys)
     filtered_target = filter_json(target_data, ignore_keys)

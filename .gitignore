@@ -14,3 +14,14 @@ fasta_diff
 seqdiff
 build/
 build-wasm/
+Testing/
+CTestTestfile.cmake
+install_manifest.txt
+*.csv
+!tests/ground_truth/*.csv
+*.fas
+!data/test.fas
+*.stderr
+*.stdout
+*.stash*
+.DS_Store

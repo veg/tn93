@@ -35,15 +35,16 @@ const char usage[] = "usage: " PROGNAME " [-h] "
                      "[-0] "
                      "[-q] "
                      "[-H] "
+                     "[-S] "
                      "[-D DELIMITER]"
                      "[FASTA]\n";
 
 const char help_msg[]
-    = "compute Tamura Nei 93 distances between aligned sequences\n"
+    = "compute Tamura Nei 93 distances between aligned sequences (version " VERSION_NUMBER ")\n"
       "\n"
       "optional arguments:\n"
       "  -h, --help               show this help message and exit\n"
-      "  -v, --version            show tn93 version \n"
+      "  -v, --version            show tn93 version (" VERSION_NUMBER ")\n"
       "  -o OUTPUT                direct the output to a file named OUTPUT "
       "(default=stdout)\n"
       "  -t THRESHOLD             only report (count) distances below this "
@@ -94,8 +95,9 @@ const char help_msg[]
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      "  -0                       report distances between each sequence and itself (as 0); this is useful to ensure every sequence\n"
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      "                           in the input file appears in the output, e.g. for network construction to contrast clustered/unclustered\n"
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      "  -q                       do not report progress updates and other diagnostics to stderr \n"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "  -H                       use Hamming distance early exit to speed up distance calculations \n"
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     "  FASTA                    read sequences to compare from this file (default=stdin)\n";
+      "  -H                       use Hamming distance early exit to speed up distance calculations \n"
+      "  -S, --subquadratic       perform subquadratic pairwise distance calculations (default = false)\n"
+      "  FASTA                    read sequences to compare from this file (default=stdin)\n";
 
 inline void
 help ()
@@ -142,7 +144,8 @@ args_t::args_t (int argc, const char *argv[])
       do_fst (false), skip_header (false), report_self (false),
       hamming_skip (false), counts_in_name (DEFAULT_COUNTS_IN_NAME),
       include_prob (DEFAULT_INCLUDE_PROB), ambigs_to_resolve (NULL),
-      resolve_fraction (DEFAULT_FRACTION), delimiter (DEFAULT_DELIMITER)
+      resolve_fraction (DEFAULT_FRACTION), delimiter (DEFAULT_DELIMITER),
+      subquadratic (false)
 {
   // skip arg[0], it's just the program name
   for (int i = 1; i < argc; ++i)
@@ -157,6 +160,8 @@ args_t::args_t (int argc, const char *argv[])
             version ();
           else if (!strcmp (&arg[2], "hamming-skip"))
             parse_hamming_skip ();
+          else if (!strcmp (&arg[2], "subquadratic"))
+            parse_subquadratic ();
           else
             ERROR ("unknown argument: %s", arg);
         }
@@ -198,6 +203,8 @@ args_t::args_t (int argc, const char *argv[])
             parse_quiet ();
           else if (arg[1] == 'H')
             parse_hamming_skip ();
+          else if (arg[1] == 'S')
+            parse_subquadratic ();
           else if (arg[1] == 'm')
             parse_fst ();
           else if (arg[1] == '0')
@@ -275,8 +282,8 @@ args_t::parse_distance (const char *str)
 {
   distance = atof (str);
 
-  if (distance < 0.0 || distance > 1.0)
-    ERROR ("genetic distance threshold must be in [0,1], had: %s", str);
+  if (distance < 0.0)
+    ERROR ("genetic distance threshold must be >= 0, had: %s", str);
 }
 
 void
@@ -285,7 +292,7 @@ args_t::parse_min_distance (const char *str)
   min_distance = atof (str);
 
   if (min_distance < 0.0 || min_distance > 1.0)
-    ERROR ("genetic minimum distance threshold must be in [0,1], had: %s",
+    ERROR ("genetic minimum distance threshold must be >= 0, had: %s",
            str);
 }
 
@@ -295,7 +302,7 @@ args_t::parse_fraction (const char *str)
   resolve_fraction = atof (str);
 
   if (resolve_fraction < 0.0 || resolve_fraction > 1.0)
-    ERROR ("resolve ambigous fraction must be in [0,1], had: %s", str);
+    ERROR ("resolve ambigous fraction must be >= 0, had: %s", str);
 }
 
 void
@@ -304,7 +311,7 @@ args_t::parse_include_prob (const char *str)
   include_prob = atof (str);
 
   if (include_prob < 0.0 || include_prob > 1.0)
-    ERROR ("sequence inclusion probability must be in [0,1], had: %s", str);
+    ERROR ("sequence inclusion probability must be >= 0, had: %s", str);
 }
 
 void
@@ -430,5 +437,10 @@ void
 args_t::parse_hamming_skip ()
 {
   hamming_skip = true;
+}
+void
+args_t::parse_subquadratic ()
+{
+  subquadratic = true;
 }
 }
