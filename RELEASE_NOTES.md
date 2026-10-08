@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Release Notes: tn93 v1.1.0
 
 This major feature release introduces an exact **Subquadratic Execution Mode** (`--subquadratic` / `-S`) designed to scale Tamura-Nei 93 distance calculations to massive cohorts ($N > 10,000$ to $N \ge 100,000$ sequences) with **guaranteed zero false negatives** and **bit-perfect floating-point parity**.
