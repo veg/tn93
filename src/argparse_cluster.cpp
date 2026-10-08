@@ -367,8 +367,8 @@ args_t::parse_distance (const char *str)
 {
   distance = atof (str);
 
-  if (distance < 0.0 || distance > 1.0)
-    ERROR ("genetic distance threshold must be in [0,1], had: %s", str);
+  if (distance < 0.0)
+    ERROR ("genetic distance threshold must be >= 0, had: %s", str);
 }
 
 void
@@ -422,7 +422,7 @@ args_t::parse_fraction (const char *str)
 {
   resolve_fraction = atof (str);
   if (resolve_fraction < 0.0 || resolve_fraction > 1.0)
-    ERROR ("resolve ambigous fraction must be in [0,1], had: %s", str);
+    ERROR ("resolve ambigous fraction must be >= 0, had: %s", str);
 }
 
 void

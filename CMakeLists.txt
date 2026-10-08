@@ -25,6 +25,7 @@ add_executable(
     src/stringBuffer.cc
     src/tn93_shared.cc
     src/argparse.cpp
+    src/subquadratic.cpp
 )
 
 add_executable(
@@ -248,3 +249,25 @@ add_test(NAME large_default COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER}
 # Test 11: Large dataset, Hamming skip
 add_test(NAME large_hamming COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
     --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/large.fasta --args "-H -t 0.015" --name large_hamming --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 12: Small dataset, subquadratic default
+add_test(NAME subq_small_default COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/test.fas --args "-S -t 0.015" --name subq_small_default --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 13: Small dataset, subquadratic resolve
+add_test(NAME subq_small_resolve COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/test.fas --args "-S -a resolve" --name subq_small_resolve --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 14: Subset dataset, subquadratic
+add_test(NAME subq_subset_default COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/subset.fasta --args "-S -t 0.015" --name subq_subset_default --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 15: Large dataset, subquadratic default
+add_test(NAME subq_large_default COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/large.fasta --args "-S -t 0.015" --name subq_large_default --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+# Test 16: Large dataset, subquadratic subset ambigs
+add_test(NAME subq_large_subset_ambigs COMMAND ${PYTHON_EXECUTABLE} ${TEST_RUNNER} 
+    --binary ${TN93_BIN} --ref-binary ${REF_TN93_BIN} --input ${DATA_DIR}/large.fasta --args "-S -t 0.015 -a RYSMBK -g 0.05" --name subq_large_subset_ambigs --ground-truth-dir ${GROUND_TRUTH_DIR})
+
+

@@ -1,3 +1,57 @@
+# Release Notes: tn93 v1.1.0
+
+This major feature release introduces an exact **Subquadratic Execution Mode** (`--subquadratic` / `-S`) designed to scale Tamura-Nei 93 distance calculations to massive cohorts ($N > 10,000$ to $N \ge 100,000$ sequences) with **guaranteed zero false negatives** and **bit-perfect floating-point parity**.
+
+## Key Features & Optimizations
+
+### 1. Subquadratic Pairwise Engine (`-S, --subquadratic`)
+*   **Exact Parity & Zero False Negatives**: All sequence pairs with pairwise distance $d \le t$ are guaranteed to be identified. Every candidate pair is evaluated using the canonical `computeTN93` routine, ensuring identical floating-point precision ($0.0$ difference) with the reference implementation.
+*   **Two-Tier Hierarchical Architecture**:
+    *   **SIMD 5-Bitplane Early-Exit Filtering ($N \le 15,000$)**: Encodes nucleotide identities ($A, C, G, T, \text{Gap}$) across 64-bit SIMD bitplanes. Uses bitwise parallel instructions (`&`, `|`, `~`, `__builtin_popcountll`) to track minimum overlap and running mismatches, immediately terminating pair evaluations once mismatches exceed $\lfloor t \cdot L_{\max} \rfloor$.
+    *   **Windowed Locality-Sensitive Hashing (LSH) ($N > 15,000$)**: Partitions the alignment into overlapping genomic windows ($W = 120\text{bp}$, stride $S = 60\text{bp}$) with $b = 8$ bands per window and $k = 14$ sampled positions, projecting sequences into hash buckets based on consensus canonicalization.
+    *   **Outlier Fallback Routing**: Sequences with low overlap ($< \text{overlap}$) or high ambiguous / gap content ($> 5\%$) are routed to an exhaustive bitplane screening fallback partition, completely preventing false negative dropouts.
+    *   **$O(1)$ Epoch-Based Deduplication**: Replaced redundant multi-band candidate allocations and sorting with thread-local epoch arrays, deduplicating candidate pairs in $O(1)$ time and accelerating query processing by over $3.7\times$.
+
+### 2. Full Protocol Compatibility
+*   **Ambiguity Handling**: Full bit-level support for `-a resolve` (minimizing distance against ambiguous characters), `-a [AMBIGS]` (e.g. `-a RYSMBK`) with `-g [FRACTION]` frequency filtering, as well as `-a average`, `-a skip`, and `-a gapmm`.
+*   **Alignment Topology**: Seamlessly handles partial overlaps (`-l OVERLAP`), differing sequence lengths, internal alignment gaps, self-distance reporting (`-0`), and count-only modes (`-c`).
+
+### 3. Scaling & Performance Benchmarks
+Benchmarked on an 18-core Apple Silicon system:
+*   **$N = 6,687$** (`data/large.fasta`, $22.4\text{M}$ pairs): **$0.06\text{s}$** vs $2.24\text{s}$ standard (**$37.3\times$ speedup**).
+*   **$N = 16,000$** ($128.0\text{M}$ pairs): **$8.87\text{s}$** ($99.90\%$ pruned, $125,060$ links, **$0$ false negatives**).
+*   **$N = 18,000$** ($162.0\text{M}$ pairs, 100 diverse clusters): **$7.44\text{s}$** ($99.55\%$ pruned, $677,304$ links, **$0$ false negatives**).
+*   **$N = 25,000$** ($312.5\text{M}$ pairs, 250 clusters): **$3.85\text{s}$** vs $41.28\text{s}$ standard (**$10.7\times$ speedup**, $738,928$ links, **$0$ false negatives**).
+*   **$N = 50,000$** ($1.25\text{B}$ pairs): **$14.54\text{s}$** ($99.88\%$ pruned, $1,469,241$ links).
+*   **$N = 100,000$** ($5.0\text{B}$ pairs): **$1\text{m }01.5\text{s}$** ($99.94\%$ pruned, $2,926,116$ links).
+
+### 4. Testing & Validation
+*   **CTest Suite**: Expanded to 16 automated test suites covering default, ambiguity-resolved, and subquadratic execution modes.
+*   **Verification**: Tested and validated over $624\text{ million}$ pairwise comparisons against reference ground truth with zero false negatives and bit-perfect results.
+
+---
+**Build Requirements**: CMake 3.5+, Python 3 (for tests), OpenMP-capable compiler.
+
+# Release Notes: tn93 v1.0.17
+
+This is a packaging release. Every GitHub release now ships prebuilt WebAssembly artifacts for all eleven tools, alongside the existing source tarballs. There are no changes to distance computation or command-line behaviour.
+
+## Key Changes Since v1.0.16
+
+### 1. WebAssembly Release Artifacts
+*   **Automated wasm builds**: A new `WebAssembly release build` workflow (`.github/workflows/wasm-release.yml`) runs on every published release, compiles all tools with Emscripten, and attaches `tn93-<version>-wasm.tar.gz` and `.zip` to the release.
+*   **Modularized output**: Each tool is emitted as a `<tool>.js` + `<tool>.wasm` pair exposing a `create_<tool>` factory with `FS` and `callMain` exported, so callers write input into the virtual filesystem and invoke the tool with its normal arguments. Memory growth is enabled for large alignments.
+*   **Single-threaded by design**: OpenMP is skipped entirely under Emscripten so the artifacts run without SharedArrayBuffer or cross-origin isolation.
+*   **Smoke test**: `tests/wasm_smoke.js` runs a module under Node; its output on `data/test.fas` is byte-identical to the native binary.
+*   **Local builds**: `emcmake cmake -B build-wasm && cmake --build build-wasm` produces the same artifacts locally with the Emscripten SDK installed.
+
+### 2. Maintenance
+*   **Documentation**: README gains a WebAssembly section covering artifacts, the module API, and local build steps.
+*   **Hygiene**: `build/` and `build-wasm/` are now ignored.
+
+---
+**Build Requirements**: CMake 3.5+, Python 3 (for tests), OpenMP-capable compiler. Emscripten SDK for wasm builds.
+
 # Release Notes: tn93 v1.0.16
 
 This release introduces major performance optimizations, new screening features, and a robust automated testing infrastructure. It represents a significant step forward in scaling `tn93` to handle modern large-scale genomic datasets.

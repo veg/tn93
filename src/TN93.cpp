@@ -6,6 +6,7 @@
 #endif
 
 #include "argparse.hpp"
+#include "subquadratic.h"
 
 using namespace std;
 using namespace argparse;
@@ -389,6 +390,23 @@ main (int argc, const char *argv[])
 
   bool cross_comparison_only = (args.input2 && !do_fst);
 
+  if (args.subquadratic && !args.do_bootstrap && !args.do_fst)
+    {
+      int res = run_subquadratic_tn93 (
+          args, sequences, seqLengths, names, nameLengths, sequence_descriptors,
+          firstSequenceLength, counts, resolutionOption, seqLengthInFile1,
+          seqLengthInFile2);
+
+      if (randFlag)
+        delete[] randFlag;
+      if (randSeqs)
+        delete[] randSeqs;
+      else
+        delete[] sequence_descriptors;
+
+      return res;
+    }
+
 #pragma omp parallel shared(                                                  \
         skipped_comparisons, sequence_descriptors, resolutionOption,          \
             foundLinks, pairIndex, sequences, seqLengths, sequenceCount,      \
@@ -461,7 +479,6 @@ main (int argc, const char *argv[])
                     local_buffer.appendBuffer (n1, n1L);
                     local_buffer.appendChar (args.delimiter);
                     local_buffer.appendBuffer (n1, n1L);
-                    local_buffer.appendChar (args.delimiter);
                     local_buffer.appendChar (args.delimiter);
                     local_buffer.appendBuffer (float_buffer, written);
                     local_buffer.appendChar ('\n');

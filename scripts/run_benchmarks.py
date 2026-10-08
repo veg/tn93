@@ -27,21 +27,30 @@ def main():
 
     files = get_msa_files(msa_dir)
 
-    print(f"{'File':<30} | {'Seqs':<8} | {'Ref (s)':<10} | {'Curr (s)':<10} | {'Speedup':<8} | {'Result':<8}")
-    print("-" * 90)
+    print(f"{'File':<30} | {'Seqs':<8} | {'Ref (s)':<10} | {'New (s)':<10} | {'New+H (s)':<10} | {'N/R':<8} | {'NH/R':<8} | {'NH/N':<8} | {'Result':<8}")
+    print("-" * 125)
 
     for f in files:
         fname = os.path.basename(f)
         ref_csv = f"ref_{fname}.csv"
-        curr_csv = f"curr_{fname}.csv"
+        new_csv = f"new_{fname}.csv"
+        new_h_csv = f"new_h_{fname}.csv"
 
         opts = "-t 0.015 -a RYSMBK -g 0.05"
+
+        # 1. Reference run
         ref_cmd = f"{ref_bin} {opts} -o {ref_csv} {f}"
         ref_time, ref_res = run_command(ref_cmd)
 
-        curr_cmd = f"{curr_bin} {opts} -H -o {curr_csv} {f}"
-        curr_time, curr_res = run_command(curr_cmd)
+        # 2. New implementation (No Hamming)
+        new_cmd = f"{curr_bin} {opts} -o {new_csv} {f}"
+        new_time, new_res = run_command(new_cmd)
 
+        # 3. New implementation (With Hamming)
+        new_h_cmd = f"{curr_bin} {opts} -H -o {new_h_csv} {f}"
+        new_h_time, new_h_res = run_command(new_h_cmd)
+
+        # Parse JSON for sequence count
         seq_count = "N/A"
         try:
             combined = ref_res.stdout + ref_res.stderr
@@ -53,20 +62,25 @@ def main():
         except:
             pass
 
-        compare_cmd = f"python3 scripts/compare_csv.py {ref_csv} {curr_csv}"
+        # Compare result identity (Ref vs New+H)
+        compare_cmd = f"python3 scripts/compare_csv.py {ref_csv} {new_h_csv}"
         comp_res = subprocess.run(compare_cmd, shell=True, capture_output=True, text=True)
 
         result_str = "SUCCESS" if comp_res.returncode == 0 else "FAILED"
-        speedup = ref_time / curr_time if curr_time > 0 else 0.0
 
-        print(f"{fname:<30} | {str(seq_count):>8} | {ref_time:>10.3f} | {curr_time:>10.3f} | {speedup:>7.2f}x | {result_str}")
+        s1 = ref_time / new_time if new_time > 0 else 0.0
+        s2 = ref_time / new_h_time if new_h_time > 0 else 0.0
+        s3 = new_time / new_h_time if new_h_time > 0 else 0.0
 
+        print(f"{fname:<30} | {str(seq_count):>8} | {ref_time:>10.3f} | {new_time:>10.3f} | {new_h_time:>10.3f} | {s1:>7.2f}x | {s2:>7.2f}x | {s3:>7.2f}x | {result_str}")
         if os.path.exists(ref_csv): os.remove(ref_csv)
-        if os.path.exists(curr_csv): os.remove(curr_csv)
+        if os.path.exists(new_csv): os.remove(new_csv)
+        if os.path.exists(new_h_csv): os.remove(new_h_csv)
 
-        if ref_time > args_cmd.max_time or curr_time > args_cmd.max_time:
+        if ref_time > args_cmd.max_time or new_time > args_cmd.max_time or new_h_time > args_cmd.max_time:
             print(f"Stopping benchmarks as runtime exceeded {args_cmd.max_time} seconds.")
             break
+
 
 if __name__ == "__main__":
     main()

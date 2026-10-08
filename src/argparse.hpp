@@ -61,6 +61,7 @@ public:
   char *ambigs_to_resolve;
   double resolve_fraction;
   char delimiter;
+  bool subquadratic;
 
   args_t (int, const char **);
   ~args_t ();
@@ -85,6 +86,7 @@ private:
   void parse_no_header (void);
   void parse_fst (void);
   void parse_hamming_skip (void);
+  void parse_subquadratic (void);
   void parse_fraction (const char *);
 };
 }
