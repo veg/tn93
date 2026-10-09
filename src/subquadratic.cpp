@@ -512,7 +512,8 @@ run_subquadratic_tn93 (argparse::args_t &args, StringBuffer &sequences,
                                    ? (bitplanes[sid].last_nongap
                                       - bitplanes[sid].first_nongap + 1)
                                    : 0;
-          if (span < args.overlap || bitplanes[sid].ambig_count > span * 0.05)
+          if (span < args.overlap || bitplanes[sid].ambig_count > span * 0.05
+              || (span - bitplanes[sid].total_nongap) > span * 0.05)
             {
               fallback_seqs.push_back (sid);
               is_fallback[sid] = true;
